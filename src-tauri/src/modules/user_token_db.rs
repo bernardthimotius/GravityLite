@@ -4,7 +4,7 @@
 #![allow(dead_code)]
 // 用户令牌存储，部分接口留作后续扩展
 
-use chrono::{FixedOffset, Local, Timelike, Utc};
+use chrono::{FixedOffset, Timelike, Utc};
 use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -23,6 +23,7 @@ pub struct UserToken {
     pub max_ips: i32,                 // 0 = unlimited
     pub curfew_start: Option<String>, // "HH:MM" 宵禁开始时间
     pub curfew_end: Option<String>,   // "HH:MM" 宵禁结束时间
+    pub curfew_timezone: String,      // "UTC+08:00"
     pub created_at: i64,
     pub updated_at: i64,
     pub last_used_at: Option<i64>,
@@ -69,6 +70,16 @@ pub fn connect_db() -> Result<Connection, String> {
     Ok(conn)
 }
 
+fn parse_utc_offset(timezone: &str) -> Option<FixedOffset> {
+    let value = timezone.strip_prefix("UTC")?;
+    let sign = if value.starts_with('-') { -1 } else { 1 };
+    let offset = value.trim_start_matches(['+', '-']);
+    let mut parts = offset.split(':');
+    let hours = parts.next()?.parse::<i32>().ok()?;
+    let minutes = parts.next().unwrap_or("0").parse::<i32>().ok()?;
+    FixedOffset::east_opt(sign * ((hours * 3600) + (minutes * 60)))
+}
+
 /// 初始化数据库
 pub fn init_db() -> Result<(), String> {
     let conn = connect_db()?;
@@ -90,7 +101,8 @@ pub fn init_db() -> Result<(), String> {
             total_requests INTEGER NOT NULL DEFAULT 0,
             total_tokens_used INTEGER NOT NULL DEFAULT 0,
             curfew_start TEXT,
-            curfew_end TEXT
+            curfew_end TEXT,
+            curfew_timezone TEXT NOT NULL DEFAULT 'UTC+08:00'
         )",
         [],
     )
@@ -117,6 +129,10 @@ pub fn init_db() -> Result<(), String> {
     );
     let _ = conn.execute("ALTER TABLE user_tokens ADD COLUMN curfew_start TEXT", []);
     let _ = conn.execute("ALTER TABLE user_tokens ADD COLUMN curfew_end TEXT", []);
+    let _ = conn.execute(
+        "ALTER TABLE user_tokens ADD COLUMN curfew_timezone TEXT NOT NULL DEFAULT 'UTC+08:00'",
+        [],
+    );
 
     // 创建 token_ip_bindings 表
     conn.execute(
@@ -178,6 +194,10 @@ pub fn init_db() -> Result<(), String> {
         "UPDATE user_tokens SET enabled = 1 WHERE enabled IS NULL",
         [],
     );
+    let _ = conn.execute(
+        "UPDATE user_tokens SET curfew_timezone = 'UTC+08:00' WHERE curfew_timezone IS NULL OR curfew_timezone = ''",
+        [],
+    );
 
     Ok(())
 }
@@ -190,6 +210,7 @@ pub fn create_token(
     max_ips: i32,
     curfew_start: Option<String>,
     curfew_end: Option<String>,
+    curfew_timezone: Option<String>,
     custom_expires_at: Option<i64>, // 自定义过期时间戳 (秒)
 ) -> Result<UserToken, String> {
     let conn = connect_db()?;
@@ -231,6 +252,7 @@ pub fn create_token(
         max_ips,
         curfew_start: curfew_start.clone(),
         curfew_end: curfew_end.clone(),
+        curfew_timezone: curfew_timezone.unwrap_or_else(|| "UTC+08:00".to_string()),
         created_at: now,
         updated_at: now,
         last_used_at: None,
@@ -241,9 +263,9 @@ pub fn create_token(
     conn.execute(
         "INSERT INTO user_tokens (
             id, token, username, description, enabled, expires_type, expires_at, max_ips,
-            curfew_start, curfew_end,
+            curfew_start, curfew_end, curfew_timezone,
             created_at, updated_at, total_requests, total_tokens_used
-        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)",
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)",
         params![
             user_token.id,
             user_token.token,
@@ -255,6 +277,7 @@ pub fn create_token(
             user_token.max_ips,
             user_token.curfew_start,
             user_token.curfew_end,
+            user_token.curfew_timezone,
             user_token.created_at,
             user_token.updated_at,
             user_token.total_requests,
@@ -286,6 +309,7 @@ pub fn list_tokens() -> Result<Vec<UserToken>, String> {
                 max_ips: row.get("max_ips").unwrap_or(0),
                 curfew_start: row.get("curfew_start").unwrap_or(None),
                 curfew_end: row.get("curfew_end").unwrap_or(None),
+                curfew_timezone: row.get("curfew_timezone").unwrap_or("UTC+08:00".to_string()),
                 created_at: row.get("created_at")?,
                 updated_at: row.get("updated_at")?,
                 last_used_at: row.get("last_used_at").unwrap_or(None),
@@ -323,6 +347,7 @@ pub fn get_token_by_id(id: &str) -> Result<Option<UserToken>, String> {
                 max_ips: row.get("max_ips")?,
                 curfew_start: row.get("curfew_start").unwrap_or(None),
                 curfew_end: row.get("curfew_end").unwrap_or(None),
+                curfew_timezone: row.get("curfew_timezone").unwrap_or("UTC+08:00".to_string()),
                 created_at: row.get("created_at")?,
                 updated_at: row.get("updated_at")?,
                 last_used_at: row.get("last_used_at")?,
@@ -356,6 +381,7 @@ pub fn get_token_by_value(token: &str) -> Result<Option<UserToken>, String> {
                 max_ips: row.get("max_ips")?,
                 curfew_start: row.get("curfew_start").unwrap_or(None),
                 curfew_end: row.get("curfew_end").unwrap_or(None),
+                curfew_timezone: row.get("curfew_timezone").unwrap_or("UTC+08:00".to_string()),
                 created_at: row.get("created_at")?,
                 updated_at: row.get("updated_at")?,
                 last_used_at: row.get("last_used_at")?,
@@ -378,6 +404,7 @@ pub fn update_token(
     max_ips: Option<i32>,
     curfew_start: Option<Option<String>>,
     curfew_end: Option<Option<String>>,
+    curfew_timezone: Option<String>,
 ) -> Result<(), String> {
     let conn = connect_db()?;
     let now = Utc::now().timestamp();
@@ -419,6 +446,12 @@ pub fn update_token(
     if let Some(end) = curfew_end {
         query.push_str(&format!(", curfew_end = ?{}", param_idx));
         params_vec.push(Box::new(end));
+        param_idx += 1;
+    }
+
+    if let Some(tz) = curfew_timezone {
+        query.push_str(&format!(", curfew_timezone = ?{}", param_idx));
+        params_vec.push(Box::new(tz));
         param_idx += 1;
     }
 
@@ -632,16 +665,14 @@ pub fn validate_token(token_str: &str, ip: &str) -> Result<(bool, Option<String>
             }
         }
 
-        // 3. 检查宵禁时间 (Curfew)
-        // 逻辑：如果当前北京时间在 start 和 end 之间，则拒绝
-        // 格式：HH:MM
-        // 使用固定 UTC+8 (北京时间)，不依赖服务器本地时区
+        // 3. Check curfew time in the token-specific UTC offset.
         if let (Some(start_str), Some(end_str)) = (&token.curfew_start, &token.curfew_end) {
             if !start_str.is_empty() && !end_str.is_empty() {
-                let beijing_offset = FixedOffset::east_opt(8 * 3600).unwrap();
-                let now_beijing = Utc::now().with_timezone(&beijing_offset);
+                let offset = parse_utc_offset(&token.curfew_timezone)
+                    .unwrap_or_else(|| FixedOffset::east_opt(8 * 3600).unwrap());
+                let now_local = Utc::now().with_timezone(&offset);
                 let current_time_str =
-                    format!("{:02}:{:02}", now_beijing.hour(), now_beijing.minute());
+                    format!("{:02}:{:02}", now_local.hour(), now_local.minute());
 
                 // 跨午夜处理: start > end (e.g. 23:00 to 06:00)
                 // 正常: start < end (e.g. 09:00 to 18:00)
@@ -652,7 +683,7 @@ pub fn validate_token(token_str: &str, ip: &str) -> Result<(bool, Option<String>
                 };
 
                 if is_curfew {
-                    return Ok((false, Some(format!("Service is not available between {} and {} Beijing Time (Curfew enabled). Current Beijing time: {}", start_str, end_str, current_time_str))));
+                    return Ok((false, Some(format!("Service is not available between {} and {} {} (Curfew enabled). Current time: {}", start_str, end_str, token.curfew_timezone, current_time_str))));
                 }
             }
         }
@@ -703,6 +734,7 @@ mod tests {
             "day".to_string(),
             Some("Test token".to_string()),
             0,
+            None,
             None,
             None,
             None,

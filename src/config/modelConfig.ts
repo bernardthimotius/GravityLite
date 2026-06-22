@@ -1,4 +1,4 @@
-import { Gemini, Claude } from '@lobehub/icons';
+import { Gemini, Claude, OpenAI } from '@lobehub/icons';
 
 /**
  * 模型配置接口
@@ -22,25 +22,34 @@ export interface ModelConfig {
     tags?: string[];
 }
 
+export const ACTIVE_PROXY_MODEL_IDS = [
+    'claude-opus-4-6-thinking',
+    'claude-sonnet-4-6',
+    'gemini-pro-agent',
+    'gemini-3.1-pro-high',
+    'gemini-3.1-pro-low',
+    'gemini-3-flash',
+    'gemini-3-flash-agent',
+    'gemini-3.5-flash-low',
+    'gemini-3.5-flash-extra-low',
+    'gemini-3.1-flash-image',
+    'gemini-3.1-flash-lite',
+    'gemini-2.5-pro',
+    'gemini-2.5-flash',
+    'gemini-2.5-flash-thinking',
+    'gemini-2.5-flash-lite',
+    'gpt-oss-120b-medium',
+] as const;
+
+export const ACTIVE_PROXY_MODEL_ID_SET = new Set<string>(ACTIVE_PROXY_MODEL_IDS);
+
 /**
  * 模型配置映射
  * 键为模型 ID，值为模型配置
  */
 export const MODEL_CONFIG: Record<string, ModelConfig> = {
-    // Gemini 3.x 系列
-    // [Migrate] Gemini 3 Pro High/Low -> Gemini 3.1 Pro High/Low
+    // Gemini 3.x Series
     'gemini-3.1-pro-high': {
-        label: 'Gemini 3.1 Pro High',
-        shortLabel: 'G3.1 Pro',
-        protectedKey: 'gemini-pro',
-        Icon: Gemini.Color,
-        i18nKey: 'proxy.model.pro_high',
-        i18nDescKey: 'proxy.model.pro_high',
-        group: 'Gemini 3',
-        tags: ['pro', 'high'],
-    },
-    // Backward-compatible alias
-    'gemini-3-pro-high': {
         label: 'Gemini 3.1 Pro High',
         shortLabel: 'G3.1 Pro',
         protectedKey: 'gemini-pro',
@@ -60,25 +69,35 @@ export const MODEL_CONFIG: Record<string, ModelConfig> = {
         group: 'Gemini 3',
         tags: ['flash'],
     },
+    'gemini-3-flash-agent': {
+        label: 'Gemini 3.5 Flash High',
+        shortLabel: 'G3.5 Flash High',
+        protectedKey: 'gemini-flash',
+        Icon: Gemini.Color,
+        i18nKey: '',
+        i18nDescKey: '',
+        group: 'Gemini 3',
+        tags: ['flash', 'high'],
+    },
     'gemini-3.1-flash-image': {
         label: 'Gemini 3.1 Flash Image',
         shortLabel: 'G3.1 Image',
-        protectedKey: 'gemini-3-pro-image',
+        protectedKey: 'gemini-3.1-flash-image',
         Icon: Gemini.Color,
-        i18nKey: 'proxy.model.pro_image',
-        i18nDescKey: 'proxy.model.pro_image_1_1',
-        group: 'Gemini 3',
-        tags: ['image', 'flash'],
+        i18nKey: '',
+        i18nDescKey: '',
+        group: 'Gemini 3.1',
+        tags: ['flash', 'image'],
     },
-    'gemini-3-pro-image': {
-        label: 'Gemini 3 Image',
-        shortLabel: 'G3 Image',
-        protectedKey: 'gemini-3-pro-image',
+    'gemini-3.1-flash-lite': {
+        label: 'Gemini 3.1 Flash Lite',
+        shortLabel: 'G3.1 Lite',
+        protectedKey: 'gemini-flash',
         Icon: Gemini.Color,
-        i18nKey: 'proxy.model.pro_image',
-        i18nDescKey: 'proxy.model.pro_image_1_1',
-        group: 'Gemini 3',
-        tags: ['image'],
+        i18nKey: '',
+        i18nDescKey: '',
+        group: 'Gemini 3.1',
+        tags: ['flash', 'lite'],
     },
     'gemini-3.1-pro-low': {
         label: 'Gemini 3.1 Pro Low',
@@ -90,19 +109,8 @@ export const MODEL_CONFIG: Record<string, ModelConfig> = {
         group: 'Gemini 3',
         tags: ['pro', 'low'],
     },
-    // Backward-compatible alias
-    'gemini-3-pro-low': {
-        label: 'Gemini 3.1 Pro Low',
-        shortLabel: 'G3.1 Low',
-        protectedKey: 'gemini-pro',
-        Icon: Gemini.Color,
-        i18nKey: 'proxy.model.pro_low',
-        i18nDescKey: 'proxy.model.pro_low',
-        group: 'Gemini 3',
-        tags: ['pro', 'low'],
-    },
 
-    // Gemini 2.5 系列
+    // Gemini 2.5 Series
     'gemini-2.5-flash': {
         label: 'Gemini 2.5 Flash',
         shortLabel: 'G2.5 Flash',
@@ -138,16 +146,16 @@ export const MODEL_CONFIG: Record<string, ModelConfig> = {
         shortLabel: 'G2.5 Pro',
         protectedKey: 'gemini-pro',
         Icon: Gemini.Color,
-        i18nKey: 'proxy.model.gemini_2_5_pro',
-        i18nDescKey: 'proxy.model.gemini_2_5_pro',
+        i18nKey: '',
+        i18nDescKey: '',
         group: 'Gemini 2.5',
         tags: ['pro'],
     },
 
-    // Claude 系列
+    // Claude Series
     'claude-sonnet-4-6': {
-        label: 'Claude 4.6',
-        shortLabel: 'Claude 4.6',
+        label: 'Claude Sonnet 4.6',
+        shortLabel: 'Claude Sonnet 4.6',
         protectedKey: 'claude',
         Icon: Claude.Color,
         i18nKey: 'proxy.model.claude_sonnet',
@@ -155,19 +163,9 @@ export const MODEL_CONFIG: Record<string, ModelConfig> = {
         group: 'Claude',
         tags: ['sonnet'],
     },
-    'claude-sonnet-4-6-thinking': {
-        label: 'Claude 4.6 TK',
-        shortLabel: 'Claude 4.6 TK',
-        protectedKey: 'claude',
-        Icon: Claude.Color,
-        i18nKey: 'proxy.model.claude_sonnet_thinking',
-        i18nDescKey: 'proxy.model.claude_sonnet_thinking',
-        group: 'Claude',
-        tags: ['sonnet', 'thinking'],
-    },
     'claude-opus-4-6-thinking': {
-        label: 'Claude Opus 4.6 TK',
-        shortLabel: 'Claude Opus 4.6 TK',
+        label: 'Claude Opus 4.6 Thinking',
+        shortLabel: 'Claude Opus 4.6 Thinking',
         protectedKey: 'claude',
         Icon: Claude.Color,
         i18nKey: 'proxy.model.claude_opus_thinking',
@@ -175,6 +173,47 @@ export const MODEL_CONFIG: Record<string, ModelConfig> = {
         group: 'Claude',
         tags: ['opus', 'thinking'],
     },
+
+    'gemini-3.5-flash-extra-low': {
+        label: 'Gemini 3.5 Flash Extra Low',
+        shortLabel: 'G3.5 Flash XL',
+        protectedKey: 'gemini-flash',
+        Icon: Gemini.Color,
+        i18nKey: '',
+        i18nDescKey: '',
+        group: 'Gemini 3.5',
+        tags: ['flash', 'extra-low'],
+    },
+    'gemini-3.5-flash-low': {
+        label: 'Gemini 3.5 Flash Low',
+        shortLabel: 'G3.5 Flash Low',
+        protectedKey: 'gemini-flash',
+        Icon: Gemini.Color,
+        i18nKey: '',
+        i18nDescKey: '',
+        group: 'Gemini 3.5',
+        tags: ['flash', 'low'],
+    },
+    'gemini-pro-agent': {
+        label: 'Gemini Pro Agent',
+        shortLabel: 'Gemini Pro Agent',
+        protectedKey: 'gemini-pro',
+        Icon: Gemini.Color,
+        i18nKey: '',
+        i18nDescKey: '',
+        group: 'Gemini Agent',
+        tags: ['pro', 'agent'],
+    },
+
+    'gpt-oss-120b-medium': {
+        label: 'GPT-OSS 120B Medium',
+        shortLabel: 'GPT-OSS 120B Medium',
+        protectedKey: 'gpt-oss',
+        Icon: OpenAI,
+        i18nKey: '',
+        i18nDescKey: '',
+        group: 'GPT-OSS',
+    }
 };
 
 /**

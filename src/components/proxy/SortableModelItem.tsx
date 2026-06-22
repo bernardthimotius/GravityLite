@@ -31,10 +31,10 @@ export function SortableModelItem({ entry, collapsed, onToggle, onRemove }: {
 
     return (
         <div ref={setNodeRef} style={style} className={cn(
-            "rounded-lg border",
+            "rounded-lg border bg-white dark:bg-base-100",
             isDragging ? "opacity-60 z-50 shadow-lg" : "",
             entry.isAg
-                ? "border-orange-200 dark:border-orange-800/40 bg-orange-50/50 dark:bg-orange-900/10"
+                ? "border-gray-200 dark:border-base-300"
                 : "border-gray-200 dark:border-base-300 bg-white dark:bg-base-100"
         )}>
             <div className="flex items-center gap-1.5 px-2.5 py-1.5">
@@ -46,7 +46,6 @@ export function SortableModelItem({ entry, collapsed, onToggle, onRemove }: {
                     {collapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
                 </button>
                 <span className="text-xs font-medium text-gray-800 dark:text-gray-200 flex-1 truncate">{entry.displayName}</span>
-                {entry.isAg && <img src="/icon.png" alt="AG" className="w-4 h-4 rounded shrink-0" />}
                 <span className="text-[9px] font-mono text-gray-400 shrink-0 hidden sm:block">{entry.provider}</span>
                 {onRemove && (
                     <button onClick={onRemove} className="p-0.5 text-gray-300 hover:text-red-500 transition-colors" title="Remove">

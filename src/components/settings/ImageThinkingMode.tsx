@@ -1,5 +1,4 @@
 import { useTranslation } from "react-i18next";
-import { Image } from "lucide-react";
 
 interface ImageThinkingModeProps {
     value?: 'enabled' | 'disabled';
@@ -18,45 +17,41 @@ export default function ImageThinkingMode({
     ] as const;
 
     return (
-        <div className="space-y-3">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-pink-50/30 dark:bg-pink-900/5 border border-pink-100/50 dark:border-pink-800/20 rounded-lg px-4 py-3">
-                <div className="flex items-center gap-3">
-                    <div className="p-1.5 bg-pink-100 dark:bg-pink-900/30 rounded text-pink-600 dark:text-pink-400">
-                        <Image size={18} />
-                    </div>
-                    <div className="space-y-0.5">
-                        <h4 className="font-bold text-sm text-gray-900 dark:text-gray-100">
-                            {t("settings.image_thinking_mode.title", { defaultValue: "图像思维模式 (Image Thinking Mode)" })}
+        <div className="rounded-lg border border-gray-200 dark:border-base-200 bg-gray-50/50 dark:bg-base-200/30 px-4 py-3">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                <div className="flex min-w-0 items-start">
+                    <div className="min-w-0 space-y-1">
+                        <h4 className="font-semibold text-sm text-gray-950 dark:text-gray-100">
+                            {t("settings.image_thinking_mode.title", { defaultValue: "Image Thinking Mode" })}
                         </h4>
-                        <p className="text-[10px] text-gray-500 dark:text-gray-400">
-                            {t("settings.image_thinking_mode.hint", { defaultValue: "影响画质与生成流程" })}
+                        <p className="text-[10px] font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">
+                            {t("settings.image_thinking_mode.hint", { defaultValue: "Affects image quality and generation flow" })}
                         </p>
                     </div>
                 </div>
 
-                <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
+                <div className="grid grid-cols-2 gap-0.5 rounded-md border border-gray-200 dark:border-base-300 bg-white/80 dark:bg-base-100 p-0.5 lg:w-[136px] shrink-0">
                     {options.map((option) => (
                         <button
                             key={option.value}
                             onClick={() => onChange(option.value)}
-                            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${value === option.value
-                                ? 'bg-white dark:bg-gray-700 text-pink-600 dark:text-pink-400 shadow-sm'
+                            className={`px-2.5 py-1.5 rounded text-[11px] font-medium transition-colors ${value === option.value
+                                ? 'bg-gray-950 text-white dark:bg-gray-100 dark:text-gray-950 shadow-sm'
                                 : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
                                 }`}
                         >
                             {t(`settings.image_thinking_mode.options.${option.label}`, {
-                                defaultValue: option.value === 'enabled' ? "开启" : "关闭"
+                                defaultValue: option.value === 'enabled' ? "On" : "Off"
                             })}
                         </button>
                     ))}
                 </div>
             </div>
-
-            <div className="px-1">
-                <p className="text-[10px] text-gray-400 dark:text-gray-500 italic leading-relaxed">
+            <div className="mt-2 min-h-[18px]">
+                <p className="text-[10px] leading-relaxed text-gray-500 dark:text-gray-400">
                     {value === 'enabled'
-                        ? t("settings.image_thinking_mode.options.enabled_desc", { defaultValue: "开启：保留思维链，返回草图 + 成品双图。" })
-                        : t("settings.image_thinking_mode.options.disabled_desc", { defaultValue: "关闭：禁用思维链，直接生成单张超清图片（画质优先）。" })
+                        ? t("settings.image_thinking_mode.options.enabled_desc", { defaultValue: "On: preserves the thinking chain and returns draft plus final images." })
+                        : t("settings.image_thinking_mode.options.disabled_desc", { defaultValue: "Off: disables the thinking chain and returns one high-quality image." })
                     }
                 </p>
             </div>

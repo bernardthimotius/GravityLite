@@ -1,19 +1,18 @@
 import { useState, useEffect } from 'react';
-import { Save, Github, User, MessageCircle, ExternalLink, RefreshCw, Heart, Coffee, LayoutDashboard, Users, Network, Activity, BarChart3, Settings as SettingsIcon, Lock, CheckCircle2, Globe, Send } from 'lucide-react';
+import { Save, User, RefreshCw, LayoutDashboard, Users, Network, Activity, BarChart3, Settings as SettingsIcon, CheckCircle2, Globe, ExternalLink } from 'lucide-react';
 import { request as invoke } from '../utils/request';
 import { open } from '@tauri-apps/plugin-dialog';
 import { useConfigStore } from '../stores/useConfigStore';
 import { AppConfig } from '../types/config';
 import ModalDialog from '../components/common/ModalDialog';
 import { showToast } from '../components/common/ToastContainer';
-import QuotaProtection from '../components/settings/QuotaProtection';
 // import SmartWarmup from '../components/settings/SmartWarmup';
 import PinnedQuotaModels from '../components/settings/PinnedQuotaModels';
 import { useDebugConsole } from '../stores/useDebugConsole';
 
 import { useTranslation } from 'react-i18next';
 import { isTauri } from '../utils/env';
-import { relaunch } from '@tauri-apps/plugin-process';
+import packageJson from '../../package.json';
 
 import DebugConsole from '../components/debug/DebugConsole';
 import ProxyPoolSettings from '../components/settings/ProxyPoolSettings';
@@ -65,7 +64,7 @@ function Settings() {
             monitored_models: []
         },
         pinned_quota_models: {
-            models: ['gemini-3-pro-high', 'gemini-3-flash', 'gemini-3-pro-image', 'claude-opus-4-6-thinking']
+            models: ['gemini-3.1-pro-high', 'gemini-3-flash', 'gemini-3.1-flash-image', 'claude-opus-4-6-thinking']
         },
         cloudflared: {
             enabled: false,
@@ -84,30 +83,12 @@ function Settings() {
     // Dialog state
     // Dialog state
     const [isClearLogsOpen, setIsClearLogsOpen] = useState(false);
-    const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
     const [dataDirPath, setDataDirPath] = useState<string>('~/.antigravity_tools/');
 
     // Antigravity cache clearing state
     const [isClearCacheOpen, setIsClearCacheOpen] = useState(false);
     const [cachePaths, setCachePaths] = useState<string[]>([]);
     const [isClearingCache, setIsClearingCache] = useState(false);
-
-    // Update check state
-    const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
-    const [updateInfo, setUpdateInfo] = useState<{
-        hasUpdate: boolean;
-        latestVersion: string;
-        currentVersion: string;
-        downloadUrl: string;
-        source?: string;
-    } | null>(null);
-
-    // Homebrew Cask state
-    const [isBrewInstalled, setIsBrewInstalled] = useState(false);
-    const [isBrewUpgrading, setIsBrewUpgrading] = useState(false);
-    const [isBrewConfirmOpen, setIsBrewConfirmOpen] = useState(false);
-    const [isBrewSuccessOpen, setIsBrewSuccessOpen] = useState(false);
-
 
     useEffect(() => {
         loadConfig();
@@ -117,30 +98,12 @@ function Settings() {
             .then(path => setDataDirPath(path))
             .catch(err => console.error('Failed to get data dir:', err));
 
-        // 加载更新设置
-        invoke<{ auto_check: boolean; last_check_time: number; check_interval_hours: number }>('get_update_settings')
-            .then(settings => {
-                setFormData(prev => ({
-                    ...prev,
-                    auto_check_update: settings.auto_check,
-                    update_check_interval: settings.check_interval_hours
-                }));
-            })
-            .catch(err => console.error('Failed to load update settings:', err));
-
         // 获取真实的开机自启状态
         invoke<boolean>('is_auto_launch_enabled')
             .then(enabled => {
                 setFormData(prev => ({ ...prev, auto_launch: enabled }));
             })
             .catch(err => console.error('Failed to get auto launch status:', err));
-
-        // 检测是否通过 Homebrew Cask 安装 (仅 Tauri 环境)
-        if (isTauri()) {
-            invoke<boolean>('check_homebrew_installation')
-                .then(installed => setIsBrewInstalled(installed))
-                .catch(err => console.error('Failed to check Homebrew installation:', err));
-        }
 
     }, [loadConfig]);
 
@@ -273,55 +236,6 @@ function Settings() {
         }
     };
 
-    const handleCheckUpdate = async () => {
-        setIsCheckingUpdate(true);
-        setUpdateInfo(null);
-        try {
-            const result = await invoke<{
-                has_update: boolean;
-                latest_version: string;
-                current_version: string;
-                download_url: string;
-                source?: string;
-            }>('check_for_updates');
-
-            setUpdateInfo({
-                hasUpdate: result.has_update,
-                latestVersion: result.latest_version,
-                currentVersion: result.current_version,
-                downloadUrl: result.download_url,
-                source: result.source,
-            });
-
-            if (result.has_update) {
-                const sourceMsg = result.source && result.source !== 'GitHub API' ? ` (via ${result.source})` : '';
-                showToast(t('settings.about.new_version_available', { version: result.latest_version }) + sourceMsg, 'info');
-            } else {
-                showToast(t('settings.about.latest_version'), 'success');
-            }
-        } catch (error) {
-            showToast(`${t('settings.about.update_check_failed')}: ${error}`, 'error');
-        } finally {
-            setIsCheckingUpdate(false);
-        }
-    };
-
-    const handleBrewUpgrade = async () => {
-        setIsBrewConfirmOpen(false);
-        setIsBrewUpgrading(true);
-        try {
-            await invoke<string>('brew_upgrade_cask');
-            setUpdateInfo(null);
-            setIsBrewSuccessOpen(true);
-        } catch (error) {
-            const errKey = String(error);
-            const errMsg = t(`settings.about.brew_error_${errKey}`, t('settings.about.brew_upgrade_failed'));
-            showToast(errMsg, 'error');
-        } finally {
-            setIsBrewUpgrading(false);
-        }
-    };
-
     // Handle opening cache clear dialog
     const handleOpenClearCacheDialog = async () => {
         try {
@@ -362,62 +276,64 @@ function Settings() {
         }
     };
 
+    const handleOpenExternal = (url: string) => {
+        window.open(url, '_blank', 'noopener,noreferrer');
+    };
+
     return (
         <div className="h-full w-full overflow-y-auto">
             <div className="p-5 space-y-4 max-w-7xl mx-auto">
-                {/* 顶部工具栏：Tab 导航和保存按钮 */}
-                <div className="flex justify-between items-center">
-                    {/* Tab 导航 - 采用顶部导航栏样式：外层灰色容器 */}
-                    <div className="flex items-center gap-1 bg-gray-100 dark:bg-base-200 rounded-full p-1 w-fit">
+                <div className="flex justify-between items-center border-b border-gray-250 dark:border-base-200 pb-3">
+                    <div className="flex items-center gap-0.5 border border-gray-200 dark:border-base-200 bg-gray-50 dark:bg-base-200 p-0.5 rounded-md w-fit">
                         <button
-                            className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${activeTab === 'general'
-                                ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
-                                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                            className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${activeTab === 'general'
+                                ? 'bg-white dark:bg-base-100 text-gray-950 dark:text-gray-100 shadow-sm'
+                                : 'text-gray-500 hover:text-gray-900 dark:hover:text-gray-100'
                                 }`}
                             onClick={() => setActiveTab('general')}
                         >
                             {t('settings.tabs.general')}
                         </button>
                         <button
-                            className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${activeTab === 'account'
-                                ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
-                                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                            className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${activeTab === 'account'
+                                ? 'bg-white dark:bg-base-100 text-gray-950 dark:text-gray-100 shadow-sm'
+                                : 'text-gray-500 hover:text-gray-900 dark:hover:text-gray-100'
                                 }`}
                             onClick={() => setActiveTab('account')}
                         >
                             {t('settings.tabs.account')}
                         </button>
                         <button
-                            className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${activeTab === 'proxy'
-                                ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
-                                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                            className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${activeTab === 'proxy'
+                                ? 'bg-white dark:bg-base-100 text-gray-950 dark:text-gray-100 shadow-sm'
+                                : 'text-gray-500 hover:text-gray-900 dark:hover:text-gray-100'
                                 }`}
                             onClick={() => setActiveTab('proxy')}
                         >
                             {t('settings.tabs.proxy')}
                         </button>
                         <button
-                            className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${activeTab === 'advanced'
-                                ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
-                                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                            className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${activeTab === 'advanced'
+                                ? 'bg-white dark:bg-base-100 text-gray-950 dark:text-gray-100 shadow-sm'
+                                : 'text-gray-500 hover:text-gray-900 dark:hover:text-gray-100'
                                 }`}
                             onClick={() => setActiveTab('advanced')}
                         >
                             {t('settings.tabs.advanced')}
                         </button>
                         <button
-                            className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${activeTab === 'debug'
-                                ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
-                                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                            className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${activeTab === 'debug'
+                                ? 'bg-white dark:bg-base-100 text-gray-950 dark:text-gray-100 shadow-sm'
+                                : 'text-gray-500 hover:text-gray-900 dark:hover:text-gray-100'
                                 }`}
                             onClick={() => setActiveTab('debug')}
                         >
                             {t('settings.tabs.debug')}
                         </button>
                         <button
-                            className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${activeTab === 'about'
-                                ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
-                                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                            className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${activeTab === 'about'
+                                ? 'bg-white dark:bg-base-100 text-gray-950 dark:text-gray-100 shadow-sm'
+                                : 'text-gray-500 hover:text-gray-900 dark:hover:text-gray-100'
                                 }`}
                             onClick={() => setActiveTab('about')}
                         >
@@ -426,26 +342,26 @@ function Settings() {
                     </div>
 
                     <button
-                        className="px-4 py-2 bg-blue-500 text-white text-sm rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-2 shadow-sm"
+                        className="px-3 py-1.5 bg-zinc-950 text-white dark:bg-zinc-50 dark:text-zinc-950 hover:bg-zinc-800 dark:hover:bg-white text-xs font-semibold rounded-md transition-colors flex items-center gap-2 shadow-sm active:scale-[0.98]"
                         onClick={handleSave}
                     >
-                        <Save className="w-4 h-4" />
+                        <Save className="w-3.5 h-3.5" />
                         {t('settings.save')}
                     </button>
                 </div>
 
                 {/* 设置表单 */}
-                <div className="bg-white dark:bg-base-100 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-base-200">
+                <div className="bg-white dark:bg-base-100 rounded-lg p-5 border border-gray-200 dark:border-base-200">
                     {/* 通用设置 */}
                     {activeTab === 'general' && (
-                        <div className="space-y-6">
-                            <h2 className="text-lg font-semibold text-gray-900 dark:text-base-content">{t('settings.general.title')}</h2>
+                        <div className="space-y-4">
+                            <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">{t('settings.general.title')}</h2>
 
                             {/* 语言选择 */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-900 dark:text-base-content mb-2">{t('settings.general.language')}</label>
+                                <label className="block text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1">{t('settings.general.language')}</label>
                                 <select
-                                    className="w-full px-4 py-4 border border-gray-200 dark:border-base-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-base-content bg-gray-50 dark:bg-base-200"
+                                    className="w-full px-2.5 py-1.5 border border-gray-200 dark:border-base-200 rounded bg-white dark:bg-base-200 text-xs text-gray-900 dark:text-base-content focus:ring-1 focus:ring-zinc-950 focus:border-transparent outline-none"
                                     value={formData.language}
                                     onChange={(e) => {
                                         const newLang = e.target.value;
@@ -469,9 +385,9 @@ function Settings() {
 
                             {/* 主题选择 */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-900 dark:text-base-content mb-2">{t('settings.general.theme')}</label>
+                                <label className="block text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1">{t('settings.general.theme')}</label>
                                 <select
-                                    className="w-full px-4 py-4 border border-gray-200 dark:border-base-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-base-content bg-gray-50 dark:bg-base-200"
+                                    className="w-full px-2.5 py-1.5 border border-gray-200 dark:border-base-200 rounded bg-white dark:bg-base-200 text-xs text-gray-900 dark:text-base-content focus:ring-1 focus:ring-zinc-950 focus:border-transparent outline-none"
                                     value={formData.theme}
                                     onChange={(e) => {
                                         const newTheme = e.target.value;
@@ -487,16 +403,16 @@ function Settings() {
 
                             {/* 开机自动启动 */}
                             <div>
-                                <div className="flex justify-between items-center mb-2">
-                                    <label className="block text-sm font-medium text-gray-900 dark:text-base-content">{t('settings.general.auto_launch')}</label>
+                                <div className="flex justify-between items-center mb-1">
+                                    <label className="block text-[10px] uppercase tracking-wider text-zinc-400 font-semibold">{t('settings.general.auto_launch')}</label>
                                     {!isTauri() && (
-                                        <span className="text-xs text-orange-500 dark:text-orange-400">
+                                        <span className="text-[10px] text-gray-400">
                                             {t('settings.web_mode_limitation', '(Web 模式不支持)')}
                                         </span>
                                     )}
                                 </div>
                                 <select
-                                    className="w-full px-4 py-4 border border-gray-200 dark:border-base-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-base-content bg-gray-50 dark:bg-base-200"
+                                    className="w-full px-2.5 py-1.5 border border-gray-200 dark:border-base-200 rounded bg-white dark:bg-base-200 text-xs text-gray-900 dark:text-base-content focus:ring-1 focus:ring-zinc-950 focus:border-transparent outline-none"
                                     value={formData.auto_launch ? 'enabled' : 'disabled'}
                                     onChange={async (e) => {
                                         const enabled = e.target.value === 'enabled';
@@ -511,198 +427,130 @@ function Settings() {
                                 >
                                     <option value="disabled">{t('settings.general.auto_launch_disabled')}</option>
                                     <option value="enabled" disabled={!isTauri()}>{t('settings.general.auto_launch_enabled')}</option>
-
                                 </select>
-                                <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">{t('settings.general.auto_launch_desc')}</p>
+                                <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">{t('settings.general.auto_launch_desc')}</p>
                             </div>
 
-                            {/* 自动检查更新 */}
-                            <>
-                                <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-base-200 rounded-lg border border-gray-100 dark:border-base-300">
-                                    <div>
-                                        <div className="font-medium text-gray-900 dark:text-base-content">{t('settings.general.auto_check_update')}</div>
-                                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{t('settings.general.auto_check_update_desc')}</p>
-                                    </div>
-                                    <label className="relative inline-flex items-center cursor-pointer">
-                                        <input
-                                            type="checkbox"
-                                            className="sr-only peer"
-                                            checked={formData.auto_check_update ?? true}
-                                            onChange={async (e) => {
-                                                const enabled = e.target.checked;
-                                                try {
-                                                    await invoke('save_update_settings', {
-                                                        settings: {
-                                                            auto_check: enabled,
-                                                            last_check_time: 0,
-                                                            check_interval_hours: formData.update_check_interval ?? 24
+                            {/* 菜单显示设置 */}
+                            <div className="border-t border-gray-250 dark:border-base-200 pt-4 mt-4">
+                                <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1">{t('settings.menu.title')}</h3>
+                                <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-3">
+                                    {t('settings.menu.desc')}
+                                </p>
+                                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+                                    {[
+                                        { path: '/', label: t('nav.dashboard'), icon: LayoutDashboard },
+                                        { path: '/accounts', label: t('nav.accounts'), icon: Users },
+                                        { path: '/api-proxy', label: t('nav.proxy'), icon: Network },
+                                        { path: '/monitor', label: t('nav.call_records'), icon: Activity },
+                                        { path: '/token-stats', label: t('nav.token_stats'), icon: BarChart3 },
+                                        { path: '/user-token', label: t('nav.user_token', 'User Tokens'), icon: Users },
+                                        { path: '/settings', label: t('nav.settings'), icon: SettingsIcon },
+                                    ].map((item) => {
+                                        const hiddenItems = formData.hidden_menu_items || [];
+                                        const isVisible = !hiddenItems.includes(item.path);
+                                        const isSettings = item.path === '/settings';
+
+                                        return (
+                                            <div
+                                                key={item.path}
+                                                onClick={async () => {
+                                                    if (!isSettings) {
+                                                        const originalConfig = { ...formData };
+                                                        const hiddenItems = formData.hidden_menu_items || [];
+                                                        const newHiddenItems = isVisible
+                                                            ? [...hiddenItems, item.path]
+                                                            : hiddenItems.filter(p => p !== item.path);
+
+                                                        // 乐观更新 UI
+                                                        const newConfig = {
+                                                            ...formData,
+                                                            hidden_menu_items: newHiddenItems
+                                                        };
+                                                        setFormData(newConfig);
+
+                                                        // 尝试保存
+                                                        try {
+                                                            await saveConfig(newConfig);
+                                                        } catch (error) {
+                                                            // 保存失败，回滚到原始快照
+                                                            setFormData(originalConfig);
+                                                            showToast(`保存失败，已恢复设置: ${error}`, 'error');
                                                         }
-                                                    });
-                                                    setFormData({ ...formData, auto_check_update: enabled });
-                                                    showToast(enabled ? t('settings.general.auto_check_update_enabled') : t('settings.general.auto_check_update_disabled'), 'success');
-                                                } catch (error) {
-                                                    showToast(`${t('common.error')}: ${error}`, 'error');
-                                                }
-                                            }}
-                                        />
-                                        <div className="w-11 h-6 bg-gray-200 dark:bg-base-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
-                                    </label>
-                                </div>
-
-                                {/* 检查间隔 */}
-                                {formData.auto_check_update && (
-                                    <div className="ml-4">
-                                        <label className="block text-sm font-medium text-gray-900 dark:text-base-content mb-2">{t('settings.general.update_check_interval')}</label>
-                                        <input
-                                            type="number"
-                                            className="w-32 px-4 py-4 border border-gray-200 dark:border-base-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-base-content bg-gray-50 dark:bg-base-200"
-                                            min="1"
-                                            max="168"
-                                            value={formData.update_check_interval ?? 24}
-                                            onChange={(e) => setFormData({ ...formData, update_check_interval: parseInt(e.target.value) })}
-                                            onBlur={async () => {
-                                                try {
-                                                    await invoke('save_update_settings', {
-                                                        settings: {
-                                                            auto_check: formData.auto_check_update ?? true,
-                                                            last_check_time: 0,
-                                                            check_interval_hours: formData.update_check_interval ?? 24
-                                                        }
-                                                    });
-                                                    showToast(t('settings.general.update_check_interval_saved'), 'success');
-                                                } catch (error) {
-                                                    showToast(`${t('common.error')}: ${error}`, 'error');
-                                                }
-                                            }}
-                                        />
-                                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">{t('settings.general.update_check_interval_desc')}</p>
-                                    </div>
-                                )}
-
-                                {/* 菜单显示设置 */}
-                                <div className="border-t border-gray-200 dark:border-base-200 pt-6 mt-6">
-                                    <h3 className="font-medium text-gray-900 dark:text-base-content mb-3">{t('settings.menu.title')}</h3>
-                                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                                        {t('settings.menu.desc')}
-                                    </p>
-                                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                                        {[
-                                            { path: '/', label: t('nav.dashboard'), icon: LayoutDashboard },
-                                            { path: '/accounts', label: t('nav.accounts'), icon: Users },
-                                            { path: '/api-proxy', label: t('nav.proxy'), icon: Network },
-                                            { path: '/monitor', label: t('nav.call_records'), icon: Activity },
-                                            { path: '/token-stats', label: t('nav.token_stats'), icon: BarChart3 },
-                                            { path: '/user-token', label: t('nav.user_token', 'User Tokens'), icon: Users },
-                                            { path: '/security', label: t('nav.security'), icon: Lock },
-                                            { path: '/settings', label: t('nav.settings'), icon: SettingsIcon },
-                                        ].map((item) => {
-                                            const hiddenItems = formData.hidden_menu_items || [];
-                                            const isVisible = !hiddenItems.includes(item.path);
-                                            const isSettings = item.path === '/settings';
-
-                                            return (
-                                                <div
-                                                    key={item.path}
-                                                    onClick={async () => {
-                                                        if (!isSettings) {
-                                                            const originalConfig = { ...formData };
-                                                            const hiddenItems = formData.hidden_menu_items || [];
-                                                            const newHiddenItems = isVisible
-                                                                ? [...hiddenItems, item.path]
-                                                                : hiddenItems.filter(p => p !== item.path);
-
-                                                            // 乐观更新 UI
-                                                            const newConfig = {
-                                                                ...formData,
-                                                                hidden_menu_items: newHiddenItems
-                                                            };
-                                                            setFormData(newConfig);
-
-                                                            // 尝试保存
-                                                            try {
-                                                                await saveConfig(newConfig);
-                                                            } catch (error) {
-                                                                // 保存失败，回滚到原始快照
-                                                                setFormData(originalConfig);
-                                                                showToast(`保存失败，已恢复设置: ${error}`, 'error');
-                                                            }
-                                                        }
-                                                    }}
-                                                    className={`
-                                                        relative flex flex-col items-center justify-center gap-3 p-4 rounded-xl border-2 transition-all cursor-pointer select-none
-                                                        ${isSettings
-                                                            ? 'bg-gray-50 dark:bg-base-200 border-gray-100 dark:border-base-300 opacity-60 cursor-not-allowed'
-                                                            : isVisible
-                                                                ? 'bg-blue-50/50 dark:bg-blue-900/10 border-blue-500 dark:border-blue-500 shadow-sm'
-                                                                : 'bg-white dark:bg-base-100 border-gray-200 dark:border-base-300 hover:border-gray-300 dark:hover:border-base-content/20 text-gray-500'
-                                                        }
-                                                    `}
-                                                >
-                                                    {/* 选中标记 */}
-                                                    {isVisible && (
-                                                        <div className="absolute top-2 right-2 text-blue-500">
-                                                            <CheckCircle2 size={16} fill="currentColor" className="text-white dark:text-base-100" />
-                                                        </div>
-                                                    )}
-
-                                                    {isSettings && (
-                                                        <div className="absolute top-2 right-2 text-xs font-bold text-gray-400 bg-gray-200 dark:bg-base-300 px-1.5 py-0.5 rounded">
-                                                            {t('settings.menu.required')}
-                                                        </div>
-                                                    )}
-
-                                                    <div className={`
-                                                        p-3 rounded-xl transition-colors
-                                                        ${isVisible
-                                                            ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
-                                                            : 'bg-gray-100 dark:bg-base-200 text-gray-400 dark:text-base-content/50'
-                                                        }
-                                                    `}>
-                                                        <item.icon size={24} />
+                                                    }
+                                                }}
+                                                className={`
+                                                    relative flex flex-col items-center justify-center gap-2 p-3 rounded border transition-all cursor-pointer select-none
+                                                    ${isSettings
+                                                        ? 'bg-gray-50 dark:bg-base-200 border-gray-200 dark:border-base-300 opacity-50 cursor-not-allowed'
+                                                        : isVisible
+                                                            ? 'bg-gray-50 dark:bg-base-200 border-zinc-950 dark:border-zinc-200 shadow-sm'
+                                                            : 'bg-white dark:bg-base-100 border-gray-205 dark:border-base-300 hover:border-gray-300 dark:hover:border-base-content/20 text-gray-500'
+                                                    }
+                                                `}
+                                            >
+                                                {/* 选中标记 */}
+                                                {isVisible && (
+                                                    <div className="absolute top-1.5 right-1.5 text-zinc-950 dark:text-zinc-200">
+                                                        <CheckCircle2 size={13} />
                                                     </div>
+                                                )}
 
-                                                    <span className={`font-medium text-sm ${isVisible ? 'text-blue-900 dark:text-blue-100' : 'text-gray-500'}`}>
-                                                        {item.label}
-                                                    </span>
+                                                {isSettings && (
+                                                    <div className="absolute top-1.5 right-1.5 text-[9px] font-semibold text-gray-400 bg-gray-200 dark:bg-base-300 px-1 rounded">
+                                                        {t('settings.menu.required')}
+                                                    </div>
+                                                )}
+
+                                                <div className={`
+                                                    p-2 rounded transition-colors
+                                                    ${isVisible
+                                                        ? 'bg-gray-200/50 dark:bg-base-300 text-gray-900 dark:text-gray-100'
+                                                        : 'bg-gray-100 dark:bg-base-200 text-gray-400 dark:text-base-content/50'
+                                                    }
+                                                `}>
+                                                    <item.icon size={18} />
                                                 </div>
-                                            );
-                                        })}
-                                    </div>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-4 flex items-center gap-1.5">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-gray-400"></div>
-                                        {t('settings.menu.selected_items_note')}
-                                    </p>
+
+                                                <span className={`font-semibold text-xs ${isVisible ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500'}`}>
+                                                    {item.label}
+                                                </span>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
-                            </>
+                                <p className="text-[10px] text-gray-400 mt-2 flex items-center gap-1.5">
+                                    <span className="w-1 h-1 rounded-full bg-gray-400"></span>
+                                    {t('settings.menu.selected_items_note')}
+                                </p>
+                            </div>
                         </div>
                     )}
 
                     {/* 账号设置 */}
                     {activeTab === 'account' && (
-                        <div className="space-y-4 animate-in fade-in duration-500">
+                        <div className="space-y-4 animate-in fade-in duration-300">
                             {/* 自动刷新配额 */}
-                            <div className="group bg-white dark:bg-base-100 rounded-xl p-5 border border-gray-100 dark:border-base-200 hover:border-blue-200 transition-all duration-300 shadow-sm">
+                            <div className="bg-white dark:bg-base-100 rounded-lg p-4 border border-gray-200 dark:border-base-200">
                                 <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-500 group-hover:bg-blue-500 group-hover:text-white transition-all duration-300">
-                                            <RefreshCw size={20} />
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded bg-gray-50 dark:bg-base-250 flex items-center justify-center text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-base-300">
+                                            <RefreshCw size={15} />
                                         </div>
                                         <div>
-                                            <div className="font-bold text-gray-900 dark:text-gray-100">{t('settings.account.auto_refresh')}</div>
-                                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t('settings.account.auto_refresh_desc')}</p>
+                                            <div className="text-xs font-semibold text-gray-900 dark:text-gray-150">{t('settings.account.auto_refresh')}</div>
+                                            <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">{t('settings.account.auto_refresh_desc')}</p>
                                         </div>
                                     </div>
-                                    <label className={`relative inline-flex items-center ${formData.quota_protection.enabled ? 'cursor-not-allowed opacity-80' : 'cursor-pointer'}`}>
+                                    <label className="relative inline-flex items-center cursor-pointer">
                                         <input
                                             type="checkbox"
-                                            className="sr-only peer"
+                                            className="toggle toggle-sm border-gray-300 dark:border-gray-600 checked:bg-sky-300 checked:border-sky-300 dark:checked:bg-sky-400 dark:checked:border-sky-400"
                                             checked={formData.auto_refresh}
-                                            disabled={formData.quota_protection.enabled}
                                             onChange={async (e) => {
                                                 const enabled = e.target.checked;
                                                 const newConfig = { ...formData, auto_refresh: enabled };
                                                 setFormData(newConfig);
-                                                // Hot Save
                                                 try {
                                                     await saveConfig(newConfig);
                                                 } catch (error) {
@@ -710,54 +558,50 @@ function Settings() {
                                                 }
                                             }}
                                         />
-                                        <div className={`w-11 h-6 bg-gray-200 dark:bg-base-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500 shadow-inner ${formData.quota_protection.enabled ? 'peer-checked:bg-blue-500' : ''}`}></div>
                                     </label>
                                 </div>
 
-                                <div className="mt-5 pt-5 border-t border-gray-50 dark:border-base-300 flex items-center gap-4 animate-in slide-in-from-top-1 duration-200">
-                                    <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('settings.account.refresh_interval')}</label>
-                                    <div className="relative">
-                                        <input
-                                            type="number"
-                                            className="w-24 px-3 py-2 bg-gray-50 dark:bg-base-200 border border-gray-100 dark:border-base-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm font-bold text-blue-600 dark:text-blue-400"
-                                            min="1"
-                                            max="35791"
-                                            value={formData.refresh_interval}
-                                            onChange={(e) => setFormData({ ...formData, refresh_interval: isNaN(parseInt(e.target.value)) ? 1 : Math.min(Math.max(parseInt(e.target.value), 1), 35791) })}
-                                        />
-                                    </div>
+                                <div className="mt-4 pt-4 border-t border-gray-200 dark:border-base-200 flex items-center gap-3 animate-in slide-in-from-top-1 duration-200">
+                                    <label className="text-[10px] font-bold text-zinc-450 dark:text-zinc-400 uppercase tracking-wider">{t('settings.account.refresh_interval')}</label>
+                                    <input
+                                        type="number"
+                                        className="w-20 px-2 py-1 bg-white dark:bg-base-200 border border-gray-200 dark:border-base-300 rounded text-xs focus:ring-1 focus:ring-zinc-950 focus:border-transparent outline-none text-zinc-950 dark:text-zinc-50 font-mono"
+                                        min="1"
+                                        max="35791"
+                                        value={formData.refresh_interval}
+                                        onChange={(e) => setFormData({ ...formData, refresh_interval: isNaN(parseInt(e.target.value)) ? 1 : Math.min(Math.max(parseInt(e.target.value), 1), 35791) })}
+                                    />
                                 </div>
                             </div>
 
                             {/* 自动获取当前账号 */}
-                            <div className="group bg-white dark:bg-base-100 rounded-xl p-5 border border-gray-100 dark:border-base-200 hover:border-emerald-200 transition-all duration-300 shadow-sm">
+                            <div className="bg-white dark:bg-base-100 rounded-lg p-4 border border-gray-200 dark:border-base-200">
                                 <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center text-emerald-500 group-hover:bg-emerald-500 group-hover:text-white transition-all duration-300">
-                                            <User size={20} />
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded bg-gray-50 dark:bg-base-250 flex items-center justify-center text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-base-300">
+                                            <User size={15} />
                                         </div>
                                         <div>
-                                            <div className="font-bold text-gray-900 dark:text-gray-100">{t('settings.account.auto_sync')}</div>
-                                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t('settings.account.auto_sync_desc')}</p>
+                                            <div className="text-xs font-semibold text-gray-900 dark:text-gray-150">{t('settings.account.auto_sync')}</div>
+                                            <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">{t('settings.account.auto_sync_desc')}</p>
                                         </div>
                                     </div>
                                     <label className="relative inline-flex items-center cursor-pointer">
                                         <input
                                             type="checkbox"
-                                            className="sr-only peer"
+                                            className="toggle toggle-sm border-gray-300 dark:border-gray-600 checked:bg-sky-300 checked:border-sky-300 dark:checked:bg-sky-400 dark:checked:border-sky-400"
                                             checked={formData.auto_sync}
                                             onChange={(e) => setFormData({ ...formData, auto_sync: e.target.checked })}
                                         />
-                                        <div className="w-11 h-6 bg-gray-200 dark:bg-base-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500 shadow-inner"></div>
                                     </label>
                                 </div>
 
                                 {formData.auto_sync && (
-                                    <div className="mt-5 pt-5 border-t border-gray-50 dark:border-base-300 flex items-center gap-4 animate-in slide-in-from-top-1 duration-200">
-                                        <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('settings.account.sync_interval')}</label>
+                                    <div className="mt-4 pt-4 border-t border-gray-200 dark:border-base-200 flex items-center gap-3 animate-in slide-in-from-top-1 duration-200">
+                                        <label className="text-[10px] font-bold text-zinc-450 dark:text-zinc-400 uppercase tracking-wider">{t('settings.account.sync_interval')}</label>
                                         <input
                                             type="number"
-                                            className="w-24 px-3 py-2 bg-gray-50 dark:bg-base-200 border border-gray-100 dark:border-base-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none text-sm font-bold text-emerald-600 dark:text-emerald-400"
+                                            className="w-20 px-2 py-1 bg-white dark:bg-base-200 border border-gray-200 dark:border-base-300 rounded text-xs focus:ring-1 focus:ring-zinc-950 focus:border-transparent outline-none text-zinc-950 dark:text-zinc-50 font-mono"
                                             min="1"
                                             max="35791"
                                             value={formData.sync_interval}
@@ -767,57 +611,8 @@ function Settings() {
                                 )}
                             </div>
 
-                            {/* 智能预热 (Smart Warmup) - [DISABLED] Backend scheduler commented out as per user request */}
-                            {/* <div className="group bg-white dark:bg-base-100 rounded-xl p-5 border border-gray-100 dark:border-base-200 hover:border-orange-200 transition-all duration-300 shadow-sm">
-                                <SmartWarmup
-                                    config={formData.scheduled_warmup}
-                                    onChange={async (newConfig) => {
-                                        const newFormData = {
-                                            ...formData,
-                                            scheduled_warmup: newConfig
-                                        };
-                                        setFormData(newFormData);
-                                        // Hot Save
-                                        try {
-                                            await saveConfig(newFormData);
-                                        } catch (error) {
-                                            showToast(`${t('common.error')}: ${error}`, 'error');
-                                        }
-                                    }}
-                                />
-                            </div> */}
-
-                            {/* 配额保护 (Quota Protection) */}
-                            <div className="group bg-white dark:bg-base-100 rounded-xl p-5 border border-gray-100 dark:border-base-200 hover:border-rose-200 transition-all duration-300 shadow-sm">
-                                <QuotaProtection
-                                    config={formData.quota_protection}
-                                    onChange={async (newConfig) => {
-                                        const updates: any = {
-                                            quota_protection: newConfig
-                                        };
-                                        // 联动逻辑：开启配额保护时，强制开启后台自动刷新 (不仅仅是预热)
-                                        if (newConfig.enabled) {
-                                            updates.auto_refresh = true;
-                                        }
-
-                                        const newFormData = {
-                                            ...formData,
-                                            ...updates
-                                        };
-                                        setFormData(newFormData);
-
-                                        // Hot Save
-                                        try {
-                                            await saveConfig(newFormData);
-                                        } catch (error) {
-                                            showToast(`${t('common.error')}: ${error}`, 'error');
-                                        }
-                                    }}
-                                />
-                            </div>
-
                             {/* 配额关注列表 (Pinned Quota Models) */}
-                            <div className="group bg-white dark:bg-base-100 rounded-xl p-5 border border-gray-100 dark:border-base-200 hover:border-indigo-200 transition-all duration-300 shadow-sm">
+                            <div className="bg-white dark:bg-base-100 rounded-lg p-4 border border-gray-200 dark:border-base-200">
                                 <PinnedQuotaModels
                                     config={formData.pinned_quota_models}
                                     onChange={(newConfig) => setFormData({
@@ -835,17 +630,17 @@ function Settings() {
                             <div className="space-y-4">
                                 {/* 默认导出路径 */}
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-900 dark:text-base-content mb-1">{t('settings.advanced.export_path')}</label>
+                                    <label className="block text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1">{t('settings.advanced.export_path')}</label>
                                     <div className="flex gap-2">
                                         <input
                                             type="text"
-                                            className="flex-1 px-4 py-4 border border-gray-200 dark:border-base-300 rounded-lg bg-gray-50 dark:bg-base-200 text-gray-900 dark:text-base-content font-medium"
+                                            className="flex-1 px-2.5 py-1.5 border border-gray-200 dark:border-base-200 rounded bg-gray-50 dark:bg-base-200 text-xs text-gray-700 dark:text-gray-400 font-mono outline-none"
                                             value={formData.default_export_path || t('settings.advanced.export_path_placeholder')}
                                             readOnly
                                         />
                                         {formData.default_export_path && (
                                             <button
-                                                className="px-4 py-2 border border-gray-200 dark:border-base-300 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors"
+                                                className="px-2.5 py-1.5 border border-gray-200 dark:border-base-200 text-xs text-zinc-950 hover:bg-gray-50 dark:text-zinc-300 dark:hover:bg-base-200 transition-colors rounded-md font-semibold"
                                                 onClick={() => setFormData({ ...formData, default_export_path: undefined })}
                                             >
                                                 {t('common.clear')}
@@ -853,107 +648,107 @@ function Settings() {
                                         )}
                                         {isTauri() ? (
                                             <button
-                                                className="px-4 py-2 border border-gray-200 dark:border-base-300 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-base-200 hover:text-gray-900 dark:hover:text-base-content transition-colors"
+                                                className="px-2.5 py-1.5 border border-gray-200 dark:border-base-200 text-xs text-gray-750 dark:text-gray-300 rounded-md hover:bg-gray-50 dark:hover:bg-base-200 transition-colors font-semibold"
                                                 onClick={handleSelectExportPath}
                                             >
                                                 {t('settings.advanced.select_btn')}
                                             </button>
                                         ) : (
-                                            <span className="self-center text-xs text-gray-400 dark:text-gray-500 italic px-2">
+                                            <span className="self-center text-[10px] text-gray-400 dark:text-gray-500 italic px-2">
                                                 {t('settings.web_mode_limitation', '(Web 模式不支持)')}
                                             </span>
                                         )}
                                     </div>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">{t('settings.advanced.default_export_path_desc')}</p>
+                                    <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">{t('settings.advanced.default_export_path_desc')}</p>
                                 </div>
 
                                 {/* 数据目录 */}
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-900 dark:text-base-content mb-1">{t('settings.advanced.data_dir')}</label>
+                                    <label className="block text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1">{t('settings.advanced.data_dir')}</label>
                                     <div className="flex gap-2">
                                         <input
                                             type="text"
-                                            className="flex-1 px-4 py-4 border border-gray-200 dark:border-base-300 rounded-lg bg-gray-50 dark:bg-base-200 text-gray-900 dark:text-base-content font-medium"
+                                            className="flex-1 px-2.5 py-1.5 border border-gray-200 dark:border-base-200 rounded bg-gray-50 dark:bg-base-200 text-xs text-gray-700 dark:text-gray-400 font-mono outline-none"
                                             value={dataDirPath}
                                             readOnly
                                         />
                                         {isTauri() ? (
                                             <button
-                                                className="px-4 py-2 border border-gray-200 dark:border-base-300 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-base-200 hover:text-gray-900 dark:hover:text-base-content transition-colors"
+                                                className="px-2.5 py-1.5 border border-gray-200 dark:border-base-200 text-xs text-gray-750 dark:text-gray-300 rounded-md hover:bg-gray-50 dark:hover:bg-base-200 transition-colors font-semibold"
                                                 onClick={handleOpenDataDir}
                                             >
                                                 {t('settings.advanced.open_btn')}
                                             </button>
                                         ) : (
-                                            <span className="self-center text-xs text-gray-400 dark:text-gray-500 italic px-2">
+                                            <span className="self-center text-[10px] text-gray-400 dark:text-gray-500 italic px-2">
                                                 {t('settings.web_mode_limitation', '(Web 模式不支持)')}
                                             </span>
                                         )}
                                     </div>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">{t('settings.advanced.data_dir_desc')}</p>
+                                    <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">{t('settings.advanced.data_dir_desc')}</p>
                                 </div>
 
                                 {/* 反重力程序路径 */}
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-900 dark:text-base-content mb-1">
+                                    <label className="block text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1">
                                         {t('settings.advanced.antigravity_path')}
                                     </label>
                                     <div className="flex gap-2">
                                         <input
                                             type="text"
-                                            className="flex-1 px-4 py-4 border border-gray-200 dark:border-base-300 rounded-lg bg-gray-50 dark:bg-base-200 text-gray-900 dark:text-base-content font-medium"
+                                            className="flex-1 px-2.5 py-1.5 border border-gray-200 dark:border-base-200 rounded bg-white dark:bg-base-200 text-xs text-gray-900 dark:text-base-content font-mono outline-none focus:ring-1 focus:ring-zinc-950 focus:border-transparent"
                                             value={formData.antigravity_executable || ''}
                                             placeholder={t('settings.advanced.antigravity_path_placeholder')}
                                             onChange={(e) => setFormData({ ...formData, antigravity_executable: e.target.value })}
                                         />
                                         {formData.antigravity_executable && (
                                             <button
-                                                className="px-4 py-2 border border-gray-200 dark:border-base-300 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors"
+                                                className="px-2.5 py-1.5 border border-gray-200 dark:border-base-200 text-xs text-zinc-950 hover:bg-gray-50 dark:text-zinc-300 dark:hover:bg-base-200 transition-colors rounded-md font-semibold"
                                                 onClick={() => setFormData({ ...formData, antigravity_executable: undefined })}
                                             >
                                                 {t('common.clear')}
                                             </button>
                                         )}
                                         <button
-                                            className="px-4 py-2 border border-gray-200 dark:border-base-300 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-base-200 transition-colors"
+                                            className="px-2.5 py-1.5 border border-gray-200 dark:border-base-200 text-xs text-gray-755 dark:text-gray-300 rounded-md hover:bg-gray-50 dark:hover:bg-base-200 transition-colors font-semibold"
                                             onClick={handleDetectAntigravityPath}
                                         >
                                             {t('settings.advanced.detect_btn')}
                                         </button>
                                         {isTauri() ? (
                                             <button
-                                                className="px-4 py-2 border border-gray-200 dark:border-base-300 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-base-200 transition-colors"
+                                                className="px-2.5 py-1.5 border border-gray-200 dark:border-base-200 text-xs text-gray-750 dark:text-gray-300 rounded-md hover:bg-gray-50 dark:hover:bg-base-200 transition-colors font-semibold"
                                                 onClick={handleSelectAntigravityPath}
                                             >
                                                 {t('settings.advanced.select_btn')}
                                             </button>
                                         ) : (
-                                            <span className="self-center text-xs text-gray-400 dark:text-gray-500 italic px-2">
+                                            <span className="self-center text-[10px] text-gray-400 dark:text-gray-500 italic px-2">
                                                 {t('settings.web_mode_limitation', '(Web 模式不支持)')}
                                             </span>
                                         )}
                                     </div>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                                    <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
                                         {t('settings.advanced.antigravity_path_desc')}
                                     </p>
                                 </div>
 
                                 {/* Antigravity IDE 程序路径 */}
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-900 dark:text-base-content mb-1">
+                                    <label className="block text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1">
                                         {t('settings.advanced.antigravity_ide_path', 'Antigravity IDE Path')}
                                     </label>
                                     <div className="flex gap-2">
                                         <input
                                             type="text"
-                                            className="flex-1 px-4 py-4 border border-gray-200 dark:border-base-300 rounded-lg bg-gray-50 dark:bg-base-200 text-gray-900 dark:text-base-content font-medium"
+                                            className="flex-1 px-2.5 py-1.5 border border-gray-200 dark:border-base-200 rounded bg-white dark:bg-base-200 text-xs text-gray-900 dark:text-base-content font-mono outline-none focus:ring-1 focus:ring-zinc-950 focus:border-transparent"
                                             value={formData.antigravity_ide_executable || ''}
                                             placeholder={t('settings.advanced.antigravity_ide_path_placeholder', 'D:\\Antigravity\\Antigravity.exe')}
                                             onChange={(e) => setFormData({ ...formData, antigravity_ide_executable: e.target.value })}
                                         />
                                         {formData.antigravity_ide_executable && (
                                             <button
-                                                className="px-4 py-2 border border-gray-200 dark:border-base-300 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors"
+                                                className="px-2.5 py-1.5 border border-gray-200 dark:border-base-200 text-xs text-zinc-950 hover:bg-gray-50 dark:text-zinc-300 dark:hover:bg-base-200 transition-colors rounded-md font-semibold"
                                                 onClick={() => setFormData({ ...formData, antigravity_ide_executable: undefined })}
                                             >
                                                 {t('common.clear')}
@@ -961,31 +756,31 @@ function Settings() {
                                         )}
                                         {isTauri() ? (
                                             <button
-                                                className="px-4 py-2 border border-gray-200 dark:border-base-300 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-base-200 transition-colors"
+                                                className="px-2.5 py-1.5 border border-gray-200 dark:border-base-200 text-xs text-gray-750 dark:text-gray-300 rounded-md hover:bg-gray-50 dark:hover:bg-base-200 transition-colors font-semibold"
                                                 onClick={handleSelectAntigravityIdePath}
                                             >
                                                 {t('settings.advanced.select_btn')}
                                             </button>
                                         ) : (
-                                            <span className="self-center text-xs text-gray-400 dark:text-gray-500 italic px-2">
+                                            <span className="self-center text-[10px] text-gray-400 dark:text-gray-500 italic px-2">
                                                 {t('settings.web_mode_limitation', '(Web 模式不支持)')}
                                             </span>
                                         )}
                                     </div>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                                    <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
                                         {t('settings.advanced.antigravity_ide_path_desc', 'Specify the executable path for Antigravity IDE (code editor). Once set, account switching will strictly protect processes at this path from being terminated.')}
                                     </p>
                                 </div>
 
                                 {/* 反重力程序启动参数 */}
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-900 dark:text-base-content mb-1">
+                                    <label className="block text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1">
                                         {t('settings.advanced.antigravity_args')}
                                     </label>
                                     <div className="flex gap-2">
                                         <input
                                             type="text"
-                                            className="flex-1 px-4 py-4 border border-gray-200 dark:border-base-300 rounded-lg bg-gray-50 dark:bg-base-200 text-gray-900 dark:text-base-content font-medium"
+                                            className="flex-1 px-2.5 py-1.5 border border-gray-200 dark:border-base-200 rounded bg-white dark:bg-base-200 text-xs text-gray-900 dark:text-base-content font-mono outline-none focus:ring-1 focus:ring-zinc-950 focus:border-transparent"
                                             value={formData.antigravity_args ? formData.antigravity_args.join(' ') : ''}
                                             placeholder={t('settings.advanced.antigravity_args_placeholder')}
                                             onChange={(e) => {
@@ -994,7 +789,7 @@ function Settings() {
                                             }}
                                         />
                                         <button
-                                            className="px-4 py-2 border border-gray-200 dark:border-base-300 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-base-200 transition-colors"
+                                            className="px-2.5 py-1.5 border border-gray-200 dark:border-base-200 text-xs text-gray-755 dark:text-gray-300 rounded-md hover:bg-gray-50 dark:hover:bg-base-200 transition-colors font-semibold"
                                             onClick={async () => {
                                                 try {
                                                     const args = await invoke<string[]>('get_antigravity_args');
@@ -1008,20 +803,20 @@ function Settings() {
                                             {t('settings.advanced.detect_args_btn')}
                                         </button>
                                     </div>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                                    <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
                                         {t('settings.advanced.antigravity_args_desc')}
                                     </p>
                                 </div>
 
                                 {/* 日志缓存清理 */}
                                 <div className="border-t border-gray-200 dark:border-base-200 pt-4">
-                                    <h3 className="font-medium text-gray-900 dark:text-base-content mb-3">{t('settings.advanced.logs_title')}</h3>
-                                    <div className="bg-gray-50 dark:bg-base-200 border border-gray-200 dark:border-base-300 rounded-lg p-3 mb-3">
-                                        <p className="text-sm text-gray-600 dark:text-gray-400">{t('settings.advanced.logs_desc')}</p>
+                                    <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1">{t('settings.advanced.logs_title')}</h3>
+                                    <div className="bg-gray-50 dark:bg-base-200 border border-gray-200 dark:border-base-300 rounded p-3 mb-3">
+                                        <p className="text-xs text-gray-600 dark:text-gray-400">{t('settings.advanced.logs_desc')}</p>
                                     </div>
                                     <div className="flex items-center gap-4">
                                         <button
-                                            className="px-4 py-2 border border-gray-300 dark:border-base-300 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-base-200 transition-colors"
+                                            className="px-2.5 py-1.5 border border-gray-200 dark:border-base-200 text-xs text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-50 dark:hover:bg-base-200 transition-colors font-semibold"
                                             onClick={() => setIsClearLogsOpen(true)}
                                         >
                                             {t('settings.advanced.clear_logs')}
@@ -1031,16 +826,16 @@ function Settings() {
 
                                 {/* Antigravity 缓存清理 */}
                                 <div className="border-t border-gray-200 dark:border-base-200 pt-4">
-                                    <h3 className="font-medium text-gray-900 dark:text-base-content mb-3">{t('settings.advanced.antigravity_cache_title')}</h3>
-                                    <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/30 rounded-lg p-3 mb-3">
-                                        <p className="text-sm text-amber-700 dark:text-amber-400">{t('settings.advanced.antigravity_cache_warning')}</p>
+                                    <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1">{t('settings.advanced.antigravity_cache_title')}</h3>
+                                    <div className="bg-gray-50 dark:bg-base-200 border border-gray-200 dark:border-base-350 rounded p-3 mb-3">
+                                        <p className="text-xs text-red-600 dark:text-red-400">{t('settings.advanced.antigravity_cache_warning')}</p>
                                     </div>
-                                    <div className="bg-gray-50 dark:bg-base-200 border border-gray-200 dark:border-base-300 rounded-lg p-3 mb-3">
-                                        <p className="text-sm text-gray-600 dark:text-gray-400">{t('settings.advanced.antigravity_cache_desc')}</p>
+                                    <div className="bg-gray-50 dark:bg-base-200 border border-gray-200 dark:border-base-300 rounded p-3 mb-3">
+                                        <p className="text-xs text-gray-600 dark:text-gray-400">{t('settings.advanced.antigravity_cache_desc')}</p>
                                     </div>
                                     <div className="flex items-center gap-4">
                                         <button
-                                            className="px-4 py-2 border border-orange-300 dark:border-orange-700 text-orange-700 dark:text-orange-400 rounded-lg hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors"
+                                            className="px-2.5 py-1.5 border border-gray-200 dark:border-base-200 text-xs text-zinc-950 dark:text-zinc-200 rounded-md hover:bg-gray-50 dark:hover:bg-base-200 transition-colors font-semibold"
                                             onClick={handleOpenClearCacheDialog}
                                         >
                                             {t('settings.advanced.clear_antigravity_cache')}
@@ -1052,19 +847,19 @@ function Settings() {
 
                                 <div className="border-t border-gray-200 dark:border-base-200 pt-4">
                                     <div className="space-y-3">
-                                        <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-base-200 rounded-lg border border-gray-100 dark:border-base-300">
+                                        <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-base-200 rounded border border-gray-200 dark:border-base-350">
                                             <div>
-                                                <div className="font-medium text-gray-900 dark:text-base-content">
+                                                <div className="text-xs font-semibold text-gray-900 dark:text-base-content">
                                                     {t('settings.advanced.debug_logs_title')}
                                                 </div>
-                                                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                                                <p className="text-[10px] text-gray-550 dark:text-gray-400 mt-0.5">
                                                     {t('settings.advanced.debug_logs_enable_desc')}
                                                 </p>
                                             </div>
                                             <label className="relative inline-flex items-center cursor-pointer">
                                                 <input
                                                     type="checkbox"
-                                                    className="sr-only peer"
+                                                    className="toggle toggle-sm border-gray-300 dark:border-gray-600 checked:bg-sky-300 checked:border-sky-300 dark:checked:bg-sky-400 dark:checked:border-sky-400"
                                                     checked={formData.proxy?.debug_logging?.enabled ?? false}
                                                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({
                                                         ...formData,
@@ -1077,24 +872,23 @@ function Settings() {
                                                         },
                                                     })}
                                                 />
-                                                <div className="w-11 h-6 bg-gray-200 dark:bg-base-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
                                             </label>
                                         </div>
                                         {(formData.proxy?.debug_logging?.enabled ?? false) && (
                                             <>
-                                                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/30 rounded-lg p-3">
-                                                    <p className="text-sm text-amber-700 dark:text-amber-400">
+                                                <div className="bg-gray-50 dark:bg-base-200 border border-gray-200 dark:border-base-300 rounded p-3">
+                                                    <p className="text-xs text-gray-600 dark:text-gray-400">
                                                         {t('settings.advanced.debug_logs_desc')}
                                                     </p>
                                                 </div>
                                                 <div>
-                                                    <label className="block text-sm font-medium text-gray-900 dark:text-base-content mb-1">
+                                                    <label className="block text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1">
                                                         {t('settings.advanced.debug_log_dir')}
                                                     </label>
                                                     <div className="flex gap-2">
                                                         <input
                                                             type="text"
-                                                            className="flex-1 px-4 py-3 border border-gray-200 dark:border-base-300 rounded-lg bg-gray-50 dark:bg-base-200 text-gray-900 dark:text-base-content font-medium"
+                                                            className="flex-1 px-2.5 py-1.5 border border-gray-200 dark:border-base-200 rounded bg-white dark:bg-base-200 text-xs text-gray-905 dark:text-base-content font-mono outline-none focus:ring-1 focus:ring-zinc-950 focus:border-transparent"
                                                             value={formData.proxy?.debug_logging?.output_dir || ''}
                                                             placeholder={`${dataDirPath.replace(/\/$/, '')}/debug_logs`}
                                                             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({
@@ -1110,14 +904,14 @@ function Settings() {
                                                         />
                                                         {isTauri() && (
                                                             <button
-                                                                className="px-4 py-2 border border-gray-200 dark:border-base-300 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-base-200 transition-colors"
+                                                                className="px-2.5 py-1.5 border border-gray-200 dark:border-base-200 text-xs text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-50 dark:hover:bg-base-200 transition-colors font-semibold"
                                                                 onClick={handleSelectDebugLogDir}
                                                             >
                                                                 {t('settings.advanced.select_btn')}
                                                             </button>
                                                         )}
                                                     </div>
-                                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                                                    <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
                                                         {t('settings.advanced.debug_log_dir_hint', { path: dataDirPath.replace(/\/$/, '') })}
                                                     </p>
                                                 </div>
@@ -1133,26 +927,25 @@ function Settings() {
 
                     {/* 调试设置 */}
                     {activeTab === 'debug' && (
-                        <div className="space-y-4 animate-in fade-in duration-500">
+                        <div className="space-y-4 animate-in fade-in duration-300">
                             {/* 标题和开关 */}
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <h2 className="text-lg font-semibold text-gray-900 dark:text-base-content">
+                                    <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
                                         {t('settings.debug.title')}
                                     </h2>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                    <p className="text-[10px] text-gray-500 mt-1">
                                         {t('settings.debug.desc')}
                                     </p>
                                 </div>
-                                <label className="relative inline-flex items-center cursor-pointer">
+                                <label className="relative inline-flex items-center cursor-pointer gap-2">
                                     <input
                                         type="checkbox"
-                                        className="sr-only peer"
+                                        className="toggle toggle-sm border-gray-300 dark:border-gray-600 checked:bg-sky-300 checked:border-sky-300 dark:checked:bg-sky-400 dark:checked:border-sky-400"
                                         checked={isEnabled}
                                         onChange={(e) => e.target.checked ? enable() : disable()}
                                     />
-                                    <div className="w-11 h-6 bg-gray-200 dark:bg-base-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
-                                    <span className="ml-3 text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
                                         {isEnabled ? t('settings.debug.enabled') : t('settings.debug.disabled')}
                                     </span>
                                 </label>
@@ -1164,12 +957,12 @@ function Settings() {
                                     <DebugConsole embedded />
                                 </div>
                             ) : (
-                                <div className="h-[calc(100vh-320px)] min-h-[400px] flex items-center justify-center bg-gray-50 dark:bg-base-200 rounded-xl border border-gray-200 dark:border-base-300">
+                                <div className="h-[calc(100vh-320px)] min-h-[400px] flex items-center justify-center bg-gray-50 dark:bg-base-200 rounded border border-gray-200 dark:border-base-300">
                                     <div className="text-center">
-                                        <p className="text-gray-500 dark:text-gray-400 text-lg font-medium">
+                                        <p className="text-gray-500 dark:text-gray-400 text-xs font-semibold">
                                             {t('settings.debug.disabled_hint')}
                                         </p>
-                                        <p className="text-gray-400 dark:text-gray-500 text-sm mt-2">
+                                        <p className="text-gray-450 dark:text-gray-500 text-[10px] mt-1">
                                             {t('settings.debug.disabled_desc')}
                                         </p>
                                     </div>
@@ -1199,271 +992,235 @@ function Settings() {
                                     };
                                     setFormData(updatedFormData);
 
-                                    // [FIX] Silent updates (like health polling) should NOT trigger saveConfig
-                                    // to prevent race conditions where old memory state rolls back new manual changes
                                     if (silent) {
-                                        console.log('Proxy status sync (silent)');
                                         return;
                                     }
 
-                                    // Hot reload: save immediately for manual changes
                                     saveConfig({ ...updatedFormData, auto_refresh: true })
-                                        .then(() => {
-                                            console.log('Proxy config saved');
-                                        })
+                                        .then(() => undefined)
                                         .catch(err => console.error('Save failed:', err));
                                 }}
                             />
 
-                            {/* [FIX #1701] 恢复全局上游代理设置 */}
-                            <div className="group bg-white dark:bg-base-100 rounded-xl p-5 border border-gray-100 dark:border-base-200 hover:border-blue-200 transition-all duration-300 shadow-sm relative overflow-hidden">
-                                <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 -mr-12 -mt-12 rounded-full blur-2xl group-hover:bg-blue-500/10 transition-colors"></div>
-                                <div className="flex items-center justify-between mb-5 relative z-10">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-500 group-hover:bg-blue-500 group-hover:text-white transition-all duration-300 shadow-sm">
-                                            <Globe size={18} />
-                                        </div>
-                                        <div>
-                                            <div className="font-bold text-gray-900 dark:text-gray-100 text-sm">{t('proxy.config.upstream_proxy.title')}</div>
-                                            <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 leading-tight max-w-[280px]">
-                                                {t('proxy.config.upstream_proxy.desc_short')}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <label className="relative inline-flex items-center cursor-pointer scale-90">
-                                        <input
-                                            type="checkbox"
-                                            className="sr-only peer"
-                                            checked={formData.proxy?.upstream_proxy?.enabled ?? false}
-                                            onChange={(e) => setFormData({
-                                                ...formData,
-                                                proxy: {
-                                                    ...formData.proxy,
-                                                    upstream_proxy: {
-                                                        ...formData.proxy?.upstream_proxy,
-                                                        enabled: e.target.checked
-                                                    }
-                                                }
-                                            })}
-                                        />
-                                        <div className="w-11 h-6 bg-gray-200 dark:bg-base-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500 shadow-inner"></div>
-                                    </label>
-                                </div>
+                             <div className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-base-200 dark:bg-base-100">
+                                  <div className="flex items-center justify-between mb-4">
+                                      <div>
+                                          <div className="text-xs font-black uppercase tracking-[0.12em] text-gray-900 dark:text-gray-100">{t('proxy.config.upstream_proxy.title')}</div>
+                                          <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+                                              {t('proxy.config.upstream_proxy.desc_short')}
+                                          </p>
+                                      </div>
+                                     <label className="relative inline-flex items-center cursor-pointer">
+                                         <input
+                                             type="checkbox"
+                                             className="toggle toggle-sm border-gray-300 dark:border-gray-600 checked:bg-sky-300 checked:border-sky-300 dark:checked:bg-sky-400 dark:checked:border-sky-400"
+                                             checked={formData.proxy?.upstream_proxy?.enabled ?? false}
+                                             onChange={(e) => setFormData({
+                                                 ...formData,
+                                                 proxy: {
+                                                     ...formData.proxy,
+                                                     upstream_proxy: {
+                                                         ...formData.proxy?.upstream_proxy,
+                                                         enabled: e.target.checked
+                                                     }
+                                                 }
+                                             })}
+                                         />
+                                     </label>
+                                 </div>
 
-                                {formData.proxy?.upstream_proxy?.enabled && (
-                                    <div className="space-y-4 animate-in slide-in-from-top-2 duration-300 relative z-10">
-                                        <div className="pt-4 border-t border-gray-50 dark:border-base-300">
-                                            <label className="block text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-2.5">
-                                                {t('proxy.config.upstream_proxy.url')}
-                                            </label>
-                                            <div className="relative group/input">
-                                                <input
-                                                    type="text"
-                                                    className="w-full px-4 py-2.5 bg-gray-50 dark:bg-base-200 border border-gray-100 dark:border-base-300 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none text-sm font-medium transition-all shadow-inner"
-                                                    placeholder={t('proxy.config.upstream_proxy.url_placeholder')}
-                                                    value={formData.proxy?.upstream_proxy?.url || ''}
-                                                    onChange={(e) => setFormData({
-                                                        ...formData,
-                                                        proxy: {
-                                                            ...formData.proxy,
-                                                            upstream_proxy: {
-                                                                ...formData.proxy?.upstream_proxy,
-                                                                url: e.target.value
-                                                            }
-                                                        }
-                                                    })}
-                                                />
-                                            </div>
-                                            <div className="mt-4 bg-amber-50/40 dark:bg-amber-900/10 rounded-xl p-3.5 border border-amber-100/50 dark:border-amber-800/20 text-[11px] text-amber-700 dark:text-amber-400 flex items-start gap-3 transition-colors hover:bg-amber-50/60">
-                                                <div className="mt-0.5 p-1 bg-amber-100/80 dark:bg-amber-800/40 rounded-lg shadow-sm">
-                                                    <Network size={12} className="text-amber-600 dark:text-amber-400" />
-                                                </div>
-                                                <div className="leading-relaxed">
-                                                    <span className="font-bold mr-1.5 opacity-80 uppercase tracking-tighter">Tip:</span>
-                                                    {t('proxy.config.upstream_proxy.socks5h_hint')}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
+                                 {formData.proxy?.upstream_proxy?.enabled && (
+                                     <div className="space-y-3 animate-in slide-in-from-top-2 duration-300">
+                                          <div className="pt-3 border-t border-gray-100 dark:border-base-200">
+                                              <label className="block text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-1.5">
+                                                  {t('proxy.config.upstream_proxy.url')}
+                                              </label>
+                                              <input
+                                                  type="text"
+                                                  className="h-9 w-full rounded-lg border border-gray-200 bg-white px-2.5 text-xs font-mono outline-none transition-colors focus:border-gray-500 dark:border-base-300 dark:bg-base-200"
+                                                 placeholder={t('proxy.config.upstream_proxy.url_placeholder')}
+                                                 value={formData.proxy?.upstream_proxy?.url || ''}
+                                                 onChange={(e) => setFormData({
+                                                     ...formData,
+                                                     proxy: {
+                                                         ...formData.proxy,
+                                                         upstream_proxy: {
+                                                             ...formData.proxy?.upstream_proxy,
+                                                             url: e.target.value
+                                                         }
+                                                     }
+                                                 })}
+                                             />
+                                              <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 p-3 text-[10px] text-gray-650 dark:border-base-300 dark:bg-base-200 dark:text-gray-400">
+                                                  <div className="leading-relaxed">
+                                                      <span className="font-semibold mr-1">Tip:</span>
+                                                      {t('proxy.config.upstream_proxy.socks5h_hint')}
+                                                  </div>
+                                             </div>
+                                         </div>
+                                     </div>
+                                 )}
+                             </div>
                         </div>
                     )}
 
                     {activeTab === 'about' && (
-                        <div className="flex flex-col h-full animate-in fade-in duration-500">
-                            <div className="flex-1 flex flex-col justify-center items-center space-y-8">
-                                {/* Branding Section */}
-                                <div className="text-center space-y-4">
-                                    <div className="relative inline-block group">
-                                        <div className="absolute inset-0 bg-blue-500/20 rounded-3xl blur-xl group-hover:blur-2xl transition-all duration-500"></div>
+                        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                            <div className="relative overflow-hidden rounded-2xl border border-gray-150 dark:border-base-200/60 bg-[#F9FBFC] dark:bg-base-200/30 p-6 flex flex-col items-center text-center">
+                                <div className="relative flex items-center justify-center p-2 rounded-2xl bg-white dark:bg-base-100 shadow-[0_12px_24px_-10px_rgba(0,0,0,0.04)] dark:shadow-none border border-gray-100 dark:border-base-200 mb-4">
+                                    <div className="relative w-16 h-16 flex items-center justify-center">
                                         <img
-                                            src="/icon.png"
-                                            alt="Antigravity Logo"
-                                            className="relative w-24 h-24 rounded-3xl shadow-2xl transform group-hover:scale-105 transition-all duration-500 rotate-3 group-hover:rotate-6 object-cover bg-white dark:bg-black"
+                                            src="/src/assets/logo-light.webp"
+                                            alt="GravityLite Logo"
+                                            className="h-12 w-auto object-contain block dark:hidden"
+                                            onError={(e) => {
+                                                e.currentTarget.src = '/src/assets/logo-light.webp';
+                                            }}
+                                        />
+                                        <img
+                                            src="/src/assets/logo-dark.webp"
+                                            alt="GravityLite Logo"
+                                            className="h-12 w-auto object-contain hidden dark:block"
                                         />
                                     </div>
+                                </div>
 
+                                <h2 className="text-xl font-bold tracking-tight text-gray-900 dark:text-gray-100 mb-1">
+                                    GravityLite
+                                </h2>
+                                <p className="text-xs text-gray-500 dark:text-zinc-400 max-w-[45ch] leading-relaxed">
+                                    A cleaned-up, focused fork of Antigravity-Manager for account management and local AI protocol proxying.
+                                </p>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="group relative rounded-2xl border border-gray-200/80 dark:border-base-200/50 bg-white dark:bg-base-100 p-5 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.02)] transition-all hover:shadow-[0_8px_16px_-6px_rgba(0,0,0,0.03)] flex flex-col justify-between">
                                     <div>
-                                        <h3 className="text-3xl font-black text-gray-900 dark:text-base-content tracking-tight mb-2">{t('common.app_name', 'Antigravity Tools')}</h3>
-                                        <div className="flex items-center justify-center gap-2 text-sm">
-                                            v4.2.5
-                                            <span className="text-gray-400 dark:text-gray-600">•</span>
-                                            <span className="text-gray-500 dark:text-gray-400">{t('settings.branding.subtitle')}</span>
+                                        <span className="text-[10px] uppercase tracking-[0.15em] text-zinc-400 font-semibold block mb-1">
+                                            {t('settings.about.version')}
+                                        </span>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-base font-mono font-semibold text-gray-900 dark:text-gray-100">
+                                                v{packageJson.version}
+                                            </span>
                                         </div>
+                                    </div>
+                                    <div className="mt-4 pt-3 border-t border-gray-100 dark:border-base-200/60 flex items-center justify-between">
+                                        <span className="text-[10px] text-gray-400">Release Channel</span>
+                                        <span className="text-[10px] font-medium text-gray-700 dark:text-zinc-300">Stable</span>
                                     </div>
                                 </div>
 
-                                {/* Cards Grid - Now 5 columns */}
-                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 w-full max-w-6xl px-4">
-                                    {/* Author Card */}
-                                    <div className="bg-white dark:bg-base-100 p-4 rounded-2xl border border-gray-100 dark:border-base-300 shadow-sm hover:shadow-md hover:border-blue-200 dark:hover:border-blue-800 transition-all group flex flex-col items-center text-center gap-3">
-                                        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl group-hover:scale-110 transition-transform duration-300">
-                                            <User className="w-6 h-6 text-blue-500" />
-                                        </div>
-                                        <div>
-                                            <div className="text-xs text-gray-400 uppercase tracking-wider font-semibold mb-1">{t('settings.about.author')}</div>
-                                            <div className="font-bold text-gray-900 dark:text-base-content">Ctrler</div>
-                                        </div>
-                                    </div>
-
-                                    {/* WeChat Card */}
-                                    <div className="bg-white dark:bg-base-100 p-4 rounded-2xl border border-gray-100 dark:border-base-300 shadow-sm hover:shadow-md hover:border-green-200 dark:hover:border-green-800 transition-all group flex flex-col items-center text-center gap-3">
-                                        <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-xl group-hover:scale-110 transition-transform duration-300">
-                                            <MessageCircle className="w-6 h-6 text-green-500" />
-                                        </div>
-                                        <div>
-                                            <div className="text-xs text-gray-400 uppercase tracking-wider font-semibold mb-1">{t('settings.about.wechat')}</div>
-                                            <div className="font-bold text-gray-900 dark:text-base-content">Ctrler</div>
+                                <div className="group relative rounded-2xl border border-gray-200/80 dark:border-base-200/50 bg-white dark:bg-base-100 p-5 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.02)] transition-all hover:shadow-[0_8px_16px_-6px_rgba(0,0,0,0.03)] flex flex-col justify-between">
+                                    <div>
+                                        <span className="text-[10px] uppercase tracking-[0.15em] text-zinc-400 font-semibold block mb-1">
+                                            Creator and Maintainer
+                                        </span>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                                Bernard Thimotius Turnip
+                                            </span>
                                         </div>
                                     </div>
-
-                                    {/* Telegram Card */}
-                                    <a
-                                        href="https://t.me/AntigravityManager"
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="bg-white dark:bg-base-100 p-4 rounded-2xl border border-gray-100 dark:border-base-300 shadow-sm hover:shadow-md hover:border-sky-200 dark:hover:border-sky-800 transition-all group flex flex-col items-center text-center gap-3 cursor-pointer"
-                                    >
-                                        <div className="p-3 bg-sky-50 dark:bg-sky-900/20 rounded-xl group-hover:scale-110 transition-transform duration-300">
-                                            <Send className="w-6 h-6 text-sky-500" />
-                                        </div>
-                                        <div>
-                                            <div className="text-xs text-gray-400 uppercase tracking-wider font-semibold mb-1">{t('settings.about.telegram')}</div>
-                                            <div className="font-bold text-gray-900 dark:text-base-content whitespace-nowrap overflow-hidden text-ellipsis w-full">Channel</div>
-                                        </div>
-                                    </a>
-
-                                    {/* GitHub Card */}
-                                    <a
-                                        href="https://github.com/lbjlaq/Antigravity-Manager"
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="bg-white dark:bg-base-100 p-4 rounded-2xl border border-gray-100 dark:border-base-300 shadow-sm hover:shadow-md hover:border-gray-300 dark:hover:border-gray-600 transition-all group flex flex-col items-center text-center gap-3 cursor-pointer"
-                                    >
-                                        <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-xl group-hover:scale-110 transition-transform duration-300">
-                                            <Github className="w-6 h-6 text-gray-900 dark:text-white" />
-                                        </div>
-                                        <div>
-                                            <div className="text-xs text-gray-400 uppercase tracking-wider font-semibold mb-1">{t('settings.about.github')}</div>
-                                            <div className="flex items-center gap-1 font-bold text-gray-900 dark:text-base-content">
-                                                <span>{t('settings.about.view_code')}</span>
-                                                <ExternalLink className="w-3 h-3 text-gray-400" />
-                                            </div>
-                                        </div>
-                                    </a>
-
-                                    {/* Support Card */}
-                                    <div
-                                        onClick={() => setIsSupportModalOpen(true)}
-                                        className="bg-white dark:bg-base-100 p-4 rounded-2xl border border-gray-100 dark:border-base-300 shadow-sm hover:shadow-md hover:border-pink-200 dark:hover:border-pink-800 transition-all group flex flex-col items-center text-center gap-3 cursor-pointer"
-                                    >
-                                        <div className="p-3 bg-pink-50 dark:bg-pink-900/20 rounded-xl group-hover:scale-110 transition-transform duration-300">
-                                            <Heart className="w-6 h-6 text-pink-500 fill-pink-500" />
-                                        </div>
-                                        <div>
-                                            <div className="text-xs text-gray-400 uppercase tracking-wider font-semibold mb-1">{t('settings.about.support_title')}</div>
-                                            <div className="font-bold text-gray-900 dark:text-base-content">{t('settings.about.support_btn')}</div>
-                                        </div>
+                                    <div className="mt-4 pt-3 border-t border-gray-100 dark:border-base-200/60 grid grid-cols-2 gap-2">
+                                        <button
+                                            onClick={() => handleOpenExternal('https://github.com/bernardthimotius')}
+                                            className="rounded-lg border border-gray-200 dark:border-base-200 px-2.5 py-1.5 text-[10px] font-medium text-gray-700 dark:text-zinc-300 hover:bg-gray-50 dark:hover:bg-base-200 flex items-center justify-center gap-1"
+                                        >
+                                            GitHub <ExternalLink className="w-2.5 h-2.5" />
+                                        </button>
+                                        <button
+                                            onClick={() => handleOpenExternal('https://www.linkedin.com/in/bernardtrnp/')}
+                                            className="rounded-lg border border-gray-200 dark:border-base-200 px-2.5 py-1.5 text-[10px] font-medium text-gray-700 dark:text-zinc-300 hover:bg-gray-50 dark:hover:bg-base-200 flex items-center justify-center gap-1"
+                                        >
+                                            LinkedIn <ExternalLink className="w-2.5 h-2.5" />
+                                        </button>
                                     </div>
                                 </div>
 
-                                {/* Tech Stack Badges */}
-                                <div className="flex gap-2 justify-center">
-                                    <div className="px-3 py-1 bg-gray-50 dark:bg-base-200 rounded-lg text-xs font-medium text-gray-500 dark:text-gray-400 border border-gray-100 dark:border-base-300">
-                                        Tauri v2
-                                    </div>
-                                    <div className="px-3 py-1 bg-gray-50 dark:bg-base-200 rounded-lg text-xs font-medium text-gray-500 dark:text-gray-400 border border-gray-100 dark:border-base-300">
-                                        React 19
-                                    </div>
-                                    <div className="px-3 py-1 bg-gray-50 dark:bg-base-200 rounded-lg text-xs font-medium text-gray-500 dark:text-gray-400 border border-gray-100 dark:border-base-300">
-                                        TypeScript
+                                <div className="group relative rounded-2xl border border-gray-200/80 dark:border-base-200/50 bg-white dark:bg-base-100 p-5 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.02)] transition-all hover:shadow-[0_8px_16px_-6px_rgba(0,0,0,0.03)]">
+                                    <span className="text-[10px] uppercase tracking-[0.15em] text-zinc-400 font-semibold block mb-1">
+                                        Upstream Attribution
+                                    </span>
+                                    <p className="text-xs leading-relaxed text-gray-600 dark:text-zinc-400">
+                                        GravityLite is based on Antigravity-Manager by lbjlaq. This fork changes the product name, UI, proxy surface, model list, and removes several unused features.
+                                    </p>
+                                    <div className="mt-4 pt-3 border-t border-gray-100 dark:border-base-200/60 grid grid-cols-2 gap-2">
+                                        <button
+                                            onClick={() => handleOpenExternal('https://github.com/lbjlaq/Antigravity-Manager')}
+                                            className="rounded-lg border border-gray-200 dark:border-base-200 px-2.5 py-1.5 text-[10px] font-medium text-gray-700 dark:text-zinc-300 hover:bg-gray-50 dark:hover:bg-base-200 flex items-center justify-center gap-1"
+                                        >
+                                            Original Repo <ExternalLink className="w-2.5 h-2.5" />
+                                        </button>
+                                        <button
+                                            onClick={() => handleOpenExternal('https://github.com/lbjlaq')}
+                                            className="rounded-lg border border-gray-200 dark:border-base-200 px-2.5 py-1.5 text-[10px] font-medium text-gray-700 dark:text-zinc-300 hover:bg-gray-50 dark:hover:bg-base-200 flex items-center justify-center gap-1"
+                                        >
+                                            lbjlaq <ExternalLink className="w-2.5 h-2.5" />
+                                        </button>
                                     </div>
                                 </div>
 
-                                {/* Check for Updates */}
-                                <div className="flex flex-col items-center gap-3">
-                                    <button
-                                        onClick={handleCheckUpdate}
-                                        disabled={isCheckingUpdate}
-                                        className="px-6 py-2.5 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 dark:disabled:bg-gray-700 text-white rounded-lg transition-all flex items-center gap-2 shadow-sm hover:shadow-md disabled:cursor-not-allowed"
-                                    >
-                                        <RefreshCw className={`w-4 h-4 ${isCheckingUpdate ? 'animate-spin' : ''}`} />
-                                        {isCheckingUpdate ? t('settings.about.checking_update') : t('settings.about.check_update')}
-                                    </button>
+                                <div className="group relative rounded-2xl border border-gray-200/80 dark:border-base-200/50 bg-white dark:bg-base-100 p-5 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.02)] transition-all hover:shadow-[0_8px_16px_-6px_rgba(0,0,0,0.03)]">
+                                    <span className="text-[10px] uppercase tracking-[0.15em] text-zinc-400 font-semibold block mb-1">
+                                        License
+                                    </span>
+                                    <p className="text-xs leading-relaxed text-gray-600 dark:text-zinc-400">
+                                        Licensed as adapted material under Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International.
+                                    </p>
+                                    <div className="mt-4 pt-3 border-t border-gray-100 dark:border-base-200/60 flex items-center justify-end gap-3">
+                                        <button
+                                            onClick={() => handleOpenExternal('https://creativecommons.org/licenses/by-nc-sa/4.0/')}
+                                            className="text-[10px] font-medium text-sky-600 dark:text-sky-400 hover:underline flex items-center gap-1"
+                                        >
+                                            CC BY-NC-SA 4.0 <ExternalLink className="w-2.5 h-2.5" />
+                                        </button>
+                                    </div>
+                                </div>
 
-                                    {/* Update Status */}
-                                    {updateInfo && !isCheckingUpdate && (
-                                        <div className="text-center">
-                                            {updateInfo.hasUpdate ? (
-                                                <div className="flex flex-col items-center gap-2">
-                                                    <div className="text-sm text-orange-600 dark:text-orange-400 font-medium">
-                                                        {t('settings.about.new_version_available', { version: updateInfo.latestVersion })}
-                                                    </div>
-                                                    <div className="flex items-center gap-2">
-                                                        {isBrewInstalled && (
-                                                            <button
-                                                                onClick={() => setIsBrewConfirmOpen(true)}
-                                                                disabled={isBrewUpgrading}
-                                                                className="px-4 py-1.5 bg-green-500 hover:bg-green-600 disabled:bg-gray-300 dark:disabled:bg-gray-700 text-white text-sm rounded-lg transition-colors flex items-center gap-1.5 disabled:cursor-not-allowed"
-                                                            >
-                                                                {isBrewUpgrading ? (
-                                                                    <>
-                                                                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                                                                        {t('settings.about.brew_upgrading')}
-                                                                    </>
-                                                                ) : (
-                                                                    t('settings.about.brew_upgrade')
-                                                                )}
-                                                            </button>
-                                                        )}
-                                                        <a
-                                                            href={updateInfo.downloadUrl}
-                                                            target="_blank"
-                                                            rel="noreferrer"
-                                                            className="px-4 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-sm rounded-lg transition-colors flex items-center gap-1.5"
-                                                        >
-                                                            {t('settings.about.download_update')}
-                                                            <ExternalLink className="w-3.5 h-3.5" />
-                                                        </a>
-                                                    </div>
-                                                </div>
-                                            ) : (
-                                                <div className="text-sm text-green-600 dark:text-green-400 font-medium">
-                                                    ✓ {t('settings.about.latest_version')}
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
+                                <div className="md:col-span-2 group relative rounded-2xl border border-gray-200/80 dark:border-base-200/50 bg-white dark:bg-base-100 p-5 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.02)] transition-all hover:shadow-[0_8px_16px_-6px_rgba(0,0,0,0.03)]">
+                                    <span className="text-[10px] uppercase tracking-[0.15em] text-zinc-400 font-semibold block mb-2">
+                                        {t('settings.about.tech_stack')}
+                                    </span>
+                                    <div className="flex flex-wrap gap-2">
+                                        {['React 19', 'TypeScript', 'Tauri v2', 'Rust', 'TailwindCSS'].map((tech) => (
+                                            <span
+                                                key={tech}
+                                                className="px-2.5 py-1 rounded-lg text-[10px] font-medium bg-gray-50 dark:bg-base-200/60 text-gray-700 dark:text-zinc-300 border border-gray-150 dark:border-base-200/40"
+                                            >
+                                                {tech}
+                                            </span>
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
 
-                            <div className="text-center text-[10px] text-gray-300 dark:text-gray-600 mt-auto pb-2">
-                                {t('settings.about.copyright')}
+                            <div className="rounded-2xl border border-gray-200/80 dark:border-base-200/50 bg-white dark:bg-base-100 p-5 space-y-4">
+                                <div className="flex flex-wrap gap-3">
+                                    <button
+                                        className="relative overflow-hidden px-4 py-2 rounded-xl border border-gray-200 dark:border-base-200/60 text-xs font-semibold text-gray-750 dark:text-zinc-200 hover:bg-gray-50 dark:hover:bg-base-200 flex items-center gap-2 transition-all duration-200 active:scale-[0.98] shadow-sm active:shadow-none"
+                                        onClick={() => handleOpenExternal('https://github.com/bernardthimotius/GravityLite')}
+                                    >
+                                        <ExternalLink className="w-3.5 h-3.5" />
+                                        {t('settings.about.view_code')}
+                                    </button>
+                                    <button
+                                        className="relative overflow-hidden px-4 py-2 rounded-xl border border-gray-200 dark:border-base-200/60 text-xs font-semibold text-gray-750 dark:text-zinc-200 hover:bg-gray-50 dark:hover:bg-base-200 flex items-center gap-2 transition-all duration-200 active:scale-[0.98] shadow-sm active:shadow-none"
+                                        onClick={() => handleOpenExternal('https://github.com/lbjlaq/Antigravity-Manager')}
+                                    >
+                                        <Globe className="w-3.5 h-3.5" />
+                                        Original Project
+                                    </button>
+                                </div>
+
+                                <div className="text-[10px] text-gray-400 dark:text-zinc-500 pt-1">
+                                    <span>
+                                        Copyright © 2026 Bernard Thimotius Turnip. Portions adapted from Antigravity-Manager © lbjlaq.
+                                    </span>
+                                </div>
                             </div>
                         </div>
-                    )
-                    }
+                    )}
                 </div >
 
                 <ModalDialog
@@ -1516,123 +1273,6 @@ function Settings() {
                     </div>
                 </ModalDialog>
 
-                {/* Homebrew Upgrade Confirm Modal */}
-                <ModalDialog
-                    isOpen={isBrewConfirmOpen}
-                    title={t('settings.about.brew_confirm_title')}
-                    type="confirm"
-                    confirmText={t('settings.about.brew_confirm_btn')}
-                    cancelText={t('common.cancel')}
-                    onConfirm={handleBrewUpgrade}
-                    onCancel={() => setIsBrewConfirmOpen(false)}
-                >
-                    <div className="space-y-3">
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                            {t('settings.about.brew_confirm_desc')}
-                        </p>
-                        <div className="bg-gray-50 dark:bg-base-200 rounded-lg p-3">
-                            <div className="flex items-center justify-between gap-2">
-                                <code className="text-xs text-gray-700 dark:text-gray-300 break-all">brew upgrade --cask antigravity-tools</code>
-                                <button
-                                    className="shrink-0 px-2 py-1 text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 border border-gray-200 dark:border-base-300 rounded hover:bg-gray-100 dark:hover:bg-base-300 transition-colors"
-                                    onClick={() => {
-                                        navigator.clipboard.writeText('brew upgrade --cask antigravity-tools');
-                                        showToast(t('common.copied', 'Copied'), 'success');
-                                    }}
-                                >
-                                    {t('common.copy', 'Copy')}
-                                </button>
-                            </div>
-                        </div>
-                        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/30 rounded-lg p-3">
-                            <p className="text-xs text-amber-700 dark:text-amber-400 mb-2">{t('settings.about.brew_quarantine_hint')}</p>
-                            <div className="flex items-center justify-between gap-2">
-                                <code className="text-xs text-amber-800 dark:text-amber-300 break-all">sudo xattr -rd com.apple.quarantine "/Applications/Antigravity Tools.app"</code>
-                                <button
-                                    className="shrink-0 px-2 py-1 text-xs text-amber-600 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-200 border border-amber-200 dark:border-amber-700 rounded hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors"
-                                    onClick={() => {
-                                        navigator.clipboard.writeText('sudo xattr -rd com.apple.quarantine "/Applications/Antigravity Tools.app"');
-                                        showToast(t('common.copied', 'Copied'), 'success');
-                                    }}
-                                >
-                                    {t('common.copy', 'Copy')}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </ModalDialog>
-
-                {/* Homebrew Upgrade Success Modal */}
-                <ModalDialog
-                    isOpen={isBrewSuccessOpen}
-                    title={t('settings.about.brew_success_title')}
-                    type="success"
-                    confirmText={t('settings.about.brew_restart_btn')}
-                    onConfirm={async () => {
-                        try {
-                            await relaunch();
-                        } catch {
-                            setIsBrewSuccessOpen(false);
-                            showToast(t('settings.about.brew_restart_failed'), 'error');
-                        }
-                    }}
-                >
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {t('settings.about.brew_upgrade_success')}
-                    </p>
-                </ModalDialog>
-
-                {/* Support Modal */}
-                <div className={`modal ${isSupportModalOpen ? 'modal-open' : ''} z-[100]`}>
-                    <div data-tauri-drag-region className="fixed top-0 left-0 right-0 h-8 z-[110]" />
-                    <div className="modal-box relative max-w-2xl bg-white dark:bg-base-100 shadow-2xl rounded-3xl p-0 overflow-hidden transform transition-all animate-in fade-in zoom-in-95 duration-300">
-                        <div className="flex flex-col items-center p-8">
-                            <div className="w-16 h-16 bg-pink-50 dark:bg-pink-900/20 rounded-2xl flex items-center justify-center mb-6 shadow-sm">
-                                <Coffee className="w-8 h-8 text-pink-500" />
-                            </div>
-
-                            <h3 className="text-2xl font-black text-gray-900 dark:text-base-content mb-3">{t('settings.about.support_title')}</h3>
-                            <p className="text-gray-500 dark:text-gray-400 text-sm text-center mb-8 max-w-md leading-relaxed">
-                                {t('settings.about.support_desc')}
-                            </p>
-
-                            {/* QR Codes Grid */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full mb-8">
-                                {/* Alipay */}
-                                <div className="flex flex-col items-center gap-3 p-4 rounded-2xl bg-gray-50 dark:bg-base-200 border border-gray-100 dark:border-base-300">
-                                    <div className="w-full aspect-square relative bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100">
-                                        <img src="/images/donate/alipay.png" alt="Alipay" className="w-full h-full object-contain" />
-                                    </div>
-                                    <span className="text-xs font-bold text-gray-700 dark:text-gray-300">{t('settings.about.support_alipay')}</span>
-                                </div>
-
-                                {/* WeChat */}
-                                <div className="flex flex-col items-center gap-3 p-4 rounded-2xl bg-gray-50 dark:bg-base-200 border border-gray-100 dark:border-base-300">
-                                    <div className="w-full aspect-square relative bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100">
-                                        <img src="/images/donate/wechat.png" alt="WeChat" className="w-full h-full object-contain" />
-                                    </div>
-                                    <span className="text-xs font-bold text-gray-700 dark:text-gray-300">{t('settings.about.support_wechat')}</span>
-                                </div>
-
-                                {/* Buy Me a Coffee */}
-                                <div className="flex flex-col items-center gap-3 p-4 rounded-2xl bg-gray-50 dark:bg-base-200 border border-gray-100 dark:border-base-300">
-                                    <div className="w-full aspect-square relative bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100">
-                                        <img src="/images/donate/coffee.png" alt="Buy Me A Coffee" className="w-full h-full object-contain" />
-                                    </div>
-                                    <span className="text-xs font-bold text-gray-700 dark:text-gray-300">{t('settings.about.support_buymeacoffee')}</span>
-                                </div>
-                            </div>
-
-                            <button
-                                onClick={() => setIsSupportModalOpen(false)}
-                                className="w-full md:w-auto px-12 py-3 bg-gray-100 dark:bg-base-300 text-gray-700 dark:text-gray-200 font-bold rounded-xl hover:bg-gray-200 dark:hover:bg-base-200 transition-all"
-                            >
-                                {t('common.close') || 'Close'}
-                            </button>
-                        </div>
-                    </div>
-                    <div className="modal-backdrop bg-black/60 backdrop-blur-md fixed inset-0 z-[-1]" onClick={() => setIsSupportModalOpen(false)}></div>
-                </div>
             </div >
         </div >
     );

@@ -18,16 +18,13 @@ export default function ThinkingBudget({
 }: ThinkingBudgetProps) {
     const { t } = useTranslation();
 
-    // 使用本地 state 管理输入值，允许临时的无效输入
     const [inputValue, setInputValue] = useState(String(config.custom_value));
 
-    // 同步外部 config 变化
     useEffect(() => {
         setInputValue(String(config.custom_value));
     }, [config.custom_value]);
 
     const handleModeChange = (mode: ThinkingBudgetMode) => {
-        // 切换到 adaptive 模式时，如果未设置 effort，默认设置为 high
         if (mode === 'adaptive' && !config.effort) {
             onChange({ ...config, mode, effort: 'high' });
         } else {
@@ -39,12 +36,10 @@ export default function ThinkingBudget({
         onChange({ ...config, effort });
     };
 
-    // 输入时只更新本地 state
     const handleInputChange = (val: string) => {
         setInputValue(val);
     };
 
-    // 失焦时校验并提交
     const handleInputBlur = () => {
         let num = parseInt(inputValue, 10);
         if (isNaN(num) || num < 1024) num = 1024;
@@ -53,29 +48,29 @@ export default function ThinkingBudget({
         onChange({ ...config, custom_value: num });
     };
 
-    const modes: ThinkingBudgetMode[] = ['auto', 'adaptive', 'passthrough', 'custom']; // Ensure adaptive is included
+    const modes: ThinkingBudgetMode[] = ['auto', 'adaptive', 'passthrough', 'custom'];
     const efforts: ThinkingEffort[] = ['low', 'medium', 'high'];
 
     return (
-        <div className="space-y-3">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-blue-50/30 dark:bg-blue-900/5 border border-blue-100/50 dark:border-blue-800/20 rounded-lg px-4 py-3">
-                <div className="space-y-0.5">
-                    <h4 className="font-bold text-sm text-gray-900 dark:text-gray-100">
-                        {t("settings.thinking_budget.title", { defaultValue: "思考预算 (Thinking Budget)" })}
+        <div className="rounded-lg border border-gray-200 dark:border-base-200 bg-gray-50/50 dark:bg-base-200/30 px-4 py-3">
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1fr_auto] lg:items-center">
+                <div className="min-w-0 space-y-1.5">
+                    <h4 className="font-semibold text-sm text-gray-950 dark:text-gray-100">
+                        {t("settings.thinking_budget.title", { defaultValue: "Thinking Budget" })}
                     </h4>
-                    <p className="text-[10px] text-gray-500 dark:text-gray-400">
-                        {t("settings.thinking_budget.mode_label", { defaultValue: "处理模式" })}
+                    <p className="text-[10px] font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">
+                        {t("settings.thinking_budget.mode_label", { defaultValue: "Processing Mode" })}
                     </p>
                 </div>
 
-                <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
+                <div className="grid grid-cols-4 gap-1 rounded-xl border border-gray-200 bg-white p-1 shadow-sm dark:border-base-300 dark:bg-base-100 lg:w-[360px] shrink-0">
                     {modes.map((key) => (
                         <button
                             key={key}
                             onClick={() => handleModeChange(key)}
-                            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${config.mode === key
-                                ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
-                                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                            className={`flex h-10 items-center justify-center rounded-lg px-2 text-center text-[11px] font-semibold leading-tight transition-colors ${config.mode === key
+                                ? 'bg-gray-950 text-white shadow-sm dark:bg-zinc-100 dark:text-zinc-950'
+                                : 'text-gray-500 hover:bg-gray-50 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-base-200 dark:hover:text-gray-200'
                                 }`}
                         >
                             {t(`settings.thinking_budget.mode.${key}`)}
@@ -84,37 +79,41 @@ export default function ThinkingBudget({
                 </div>
             </div>
 
-            {/* Mode-specific UI (Compact) */}
-            <div className="px-1">
+            <div className="mt-3 rounded-md border border-gray-200/70 bg-white/60 px-3 py-2 dark:border-base-300/70 dark:bg-base-100/50">
                 {config.mode === 'auto' && (
-                    <p className="text-[10px] text-gray-400 dark:text-gray-500 italic">
+                    <p className="text-[10px] leading-relaxed text-gray-500 dark:text-gray-400">
                         {t("settings.thinking_budget.auto_hint", {
-                            defaultValue: "自动模式：对 Gemini/Thinking 及联网请求自动限制在 24576 以避免错误。",
+                            defaultValue: "Auto: limits Gemini/Thinking and web-search requests to 24576 to avoid errors.",
                         })}
                     </p>
                 )}
 
                 {config.mode === 'passthrough' && (
-                    <p className="text-[10px] text-amber-600 dark:text-amber-500/80">
+                    <p className="text-[10px] leading-relaxed text-amber-600 dark:text-amber-400">
                         {t("settings.thinking_budget.passthrough_warning", {
-                            defaultValue: "透传：直接使用调用方原始值，不支持高值可能导致失败。",
+                            defaultValue: "Passthrough: uses the caller's raw value. Unsupported high values may fail.",
                         })}
                     </p>
                 )}
 
                 {config.mode === 'adaptive' && (
-                    <div className="flex flex-col gap-2">
-                        <div className="flex items-center gap-3">
-                            <span className="text-xs text-gray-500 dark:text-gray-400">
-                                {t("settings.thinking_budget.effort_label", { defaultValue: "思考强度" })}:
+                    <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+                        <p className="text-[10px] leading-relaxed text-gray-500 dark:text-gray-400">
+                            {t("settings.thinking_budget.adaptive_hint", {
+                                defaultValue: "Adaptive: lets the model adjust thinking effort by task complexity. Recommended for Claude 4.6+.",
+                            })}
+                        </p>
+                        <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-[10px] font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">
+                                {t("settings.thinking_budget.effort_label", { defaultValue: "Thinking Effort" })}:
                             </span>
-                            <div className="flex bg-gray-100 dark:bg-gray-800 p-0.5 rounded-lg">
+                            <div className="flex rounded-md border border-gray-200 dark:border-base-300 bg-white/80 dark:bg-base-100 p-0.5">
                                 {efforts.map((effort) => (
                                     <button
                                         key={effort}
                                         onClick={() => handleEffortChange(effort)}
-                                        className={`px-2 py-1 rounded-md text-[10px] font-medium transition-all ${config.effort === effort
-                                            ? 'bg-white dark:bg-gray-700 text-purple-600 dark:text-purple-400 shadow-sm'
+                                        className={`px-2 py-1 rounded text-[10px] font-medium transition-colors ${config.effort === effort
+                                            ? 'bg-gray-950 text-white dark:bg-gray-100 dark:text-gray-950 shadow-sm'
                                             : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
                                             }`}
                                     >
@@ -123,33 +122,28 @@ export default function ThinkingBudget({
                                 ))}
                             </div>
                         </div>
-                        <p className="text-[10px] text-purple-600 dark:text-purple-400/80">
-                            {t("settings.thinking_budget.adaptive_hint", {
-                                defaultValue: "自适应模式：由模型根据任务复杂度自动调整思考量。Claude 4.6+ 推荐使用此模式。",
-                            })}
-                        </p>
                     </div>
                 )}
 
 
                 {config.mode === 'custom' && (
-                    <div className="flex items-center gap-4">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex items-center gap-2">
                             <input
                                 type="number"
                                 value={inputValue}
                                 onChange={(e) => handleInputChange(e.target.value)}
                                 onBlur={handleInputBlur}
-                                className="w-24 bg-white dark:bg-base-100 border border-gray-200 dark:border-gray-700 rounded-md px-2 py-1 text-xs font-mono focus:ring-1 focus:ring-blue-500 outline-none transition-all [appearance:textfield]"
+                                className="w-24 bg-white dark:bg-base-100 border border-gray-200 dark:border-base-300 rounded-md px-2 py-1 text-xs font-mono focus:ring-1 focus:ring-gray-950 outline-none transition-all [appearance:textfield]"
                                 min={1024}
                                 max={65536}
                                 step={1024}
                             />
                             <span className="text-[10px] text-gray-400 font-mono">TOKENS</span>
                         </div>
-                        <p className="text-[10px] text-gray-500 dark:text-gray-500">
+                        <p className="text-[10px] text-gray-500 dark:text-gray-400">
                             {t("settings.thinking_budget.custom_value_hint", {
-                                defaultValue: "推荐：24576 (Flash) 或 51200 (扩展)",
+                                defaultValue: "Recommended: 24576 for Flash or 51200 for extended runs",
                             })}
                         </p>
                     </div>

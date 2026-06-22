@@ -22,6 +22,16 @@ pub struct AccountTokenStats {
     pub request_count: u64,
 }
 
+/// Per-api-key (username) token statistics
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ApiKeyTokenStats {
+    pub username: String,
+    pub total_input_tokens: u64,
+    pub total_output_tokens: u64,
+    pub total_tokens: u64,
+    pub request_count: u64,
+}
+
 /// Summary statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TokenStatsSummary {
@@ -53,6 +63,13 @@ pub struct ModelTrendPoint {
 pub struct AccountTrendPoint {
     pub period: String,
     pub account_data: std::collections::HashMap<String, u64>,
+}
+
+/// API Key trend data point (for stacked area chart)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ApiKeyTrendPoint {
+    pub period: String,
+    pub api_key_data: std::collections::HashMap<String, u64>,
 }
 
 pub(crate) fn get_db_path() -> Result<PathBuf, String> {
@@ -94,6 +111,9 @@ pub fn init_db() -> Result<(), String> {
     )
     .map_err(|e| e.to_string())?;
 
+    // Try to add username column (ignore error if it already exists)
+    let _ = conn.execute("ALTER TABLE token_usage ADD COLUMN username TEXT", []);
+
     // Create indexes for efficient queries
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_token_timestamp ON token_usage (timestamp DESC)",
@@ -103,6 +123,12 @@ pub fn init_db() -> Result<(), String> {
 
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_token_account ON token_usage (account_email)",
+        [],
+    )
+    .map_err(|e| e.to_string())?;
+
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_token_username ON token_usage (username)",
         [],
     )
     .map_err(|e| e.to_string())?;
@@ -131,6 +157,7 @@ pub fn record_usage(
     model: &str,
     input_tokens: u32,
     output_tokens: u32,
+    username: Option<&str>,
 ) -> Result<(), String> {
     let conn = connect_db()?;
     let timestamp = chrono::Local::now().timestamp();
@@ -138,9 +165,9 @@ pub fn record_usage(
 
     // Insert into raw usage table
     conn.execute(
-        "INSERT INTO token_usage (timestamp, account_email, model, input_tokens, output_tokens, total_tokens)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-        params![timestamp, account_email, model, input_tokens, output_tokens, total_tokens],
+        "INSERT INTO token_usage (timestamp, account_email, model, input_tokens, output_tokens, total_tokens, username)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+        params![timestamp, account_email, model, input_tokens, output_tokens, total_tokens, username],
     ).map_err(|e| e.to_string())?;
 
     let hour_bucket = chrono::Local::now().format("%Y-%m-%d %H:00").to_string();
@@ -299,6 +326,43 @@ pub fn get_account_stats(hours: i64) -> Result<Vec<AccountTokenStats>, String> {
         .query_map([cutoff_bucket], |row| {
             Ok(AccountTokenStats {
                 account_email: row.get(0)?,
+                total_input_tokens: row.get(1)?,
+                total_output_tokens: row.get(2)?,
+                total_tokens: row.get(3)?,
+                request_count: row.get(4)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+
+    let mut result = Vec::new();
+    for row in rows {
+        result.push(row.map_err(|e| e.to_string())?);
+    }
+    Ok(result)
+}
+
+pub fn get_api_key_stats(hours: i64) -> Result<Vec<ApiKeyTokenStats>, String> {
+    let conn = connect_db()?;
+    let cutoff = chrono::Local::now().timestamp() - (hours * 3600);
+
+    let mut stmt = conn
+        .prepare(
+            "SELECT COALESCE(NULLIF(username, ''), 'Direct') as api_key_name,
+                SUM(input_tokens) as input,
+                SUM(output_tokens) as output,
+                SUM(total_tokens) as total,
+                COUNT(*) as count
+         FROM token_usage
+         WHERE timestamp >= ?1
+         GROUP BY api_key_name
+         ORDER BY total DESC",
+        )
+        .map_err(|e| e.to_string())?;
+
+    let rows = stmt
+        .query_map([cutoff], |row| {
+            Ok(ApiKeyTokenStats {
+                username: row.get(0)?,
                 total_input_tokens: row.get(1)?,
                 total_output_tokens: row.get(2)?,
                 total_tokens: row.get(3)?,
@@ -549,6 +613,92 @@ pub fn get_account_trend_daily(days: i64) -> Result<Vec<AccountTrendPoint>, Stri
         .map(|(period, account_data)| AccountTrendPoint {
             period,
             account_data,
+        })
+        .collect())
+}
+
+pub fn get_api_key_trend_hourly(hours: i64) -> Result<Vec<ApiKeyTrendPoint>, String> {
+    let conn = connect_db()?;
+    let cutoff = chrono::Local::now().timestamp() - (hours * 3600);
+
+    let mut stmt = conn
+        .prepare(
+            "SELECT strftime('%Y-%m-%d %H:00', datetime(timestamp, 'unixepoch', 'localtime')) as hour_bucket,
+                COALESCE(NULLIF(username, ''), 'Direct') as api_key_name,
+                SUM(total_tokens) as total
+         FROM token_usage
+         WHERE timestamp >= ?1
+         GROUP BY hour_bucket, api_key_name
+         ORDER BY hour_bucket ASC",
+        )
+        .map_err(|e| e.to_string())?;
+
+    let mut trend_map: std::collections::BTreeMap<String, std::collections::HashMap<String, u64>> =
+        std::collections::BTreeMap::new();
+
+    let rows = stmt
+        .query_map([cutoff], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, u64>(2)?,
+            ))
+        })
+        .map_err(|e| e.to_string())?;
+
+    for row in rows {
+        let (period, api_key, total) = row.map_err(|e| e.to_string())?;
+        trend_map.entry(period).or_default().insert(api_key, total);
+    }
+
+    Ok(trend_map
+        .into_iter()
+        .map(|(period, api_key_data)| ApiKeyTrendPoint {
+            period,
+            api_key_data,
+        })
+        .collect())
+}
+
+pub fn get_api_key_trend_daily(days: i64) -> Result<Vec<ApiKeyTrendPoint>, String> {
+    let conn = connect_db()?;
+    let cutoff = chrono::Local::now().timestamp() - (days * 24 * 3600);
+
+    let mut stmt = conn
+        .prepare(
+            "SELECT strftime('%Y-%m-%d', datetime(timestamp, 'unixepoch', 'localtime')) as day_bucket,
+                COALESCE(NULLIF(username, ''), 'Direct') as api_key_name,
+                SUM(total_tokens) as total
+         FROM token_usage
+         WHERE timestamp >= ?1
+         GROUP BY day_bucket, api_key_name
+         ORDER BY day_bucket ASC",
+        )
+        .map_err(|e| e.to_string())?;
+
+    let mut trend_map: std::collections::BTreeMap<String, std::collections::HashMap<String, u64>> =
+        std::collections::BTreeMap::new();
+
+    let rows = stmt
+        .query_map([cutoff], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, u64>(2)?,
+            ))
+        })
+        .map_err(|e| e.to_string())?;
+
+    for row in rows {
+        let (period, api_key, total) = row.map_err(|e| e.to_string())?;
+        trend_map.entry(period).or_default().insert(api_key, total);
+    }
+
+    Ok(trend_map
+        .into_iter()
+        .map(|(period, api_key_data)| ApiKeyTrendPoint {
+            period,
+            api_key_data,
         })
         .collect())
 }

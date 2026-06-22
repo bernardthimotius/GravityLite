@@ -44,8 +44,6 @@ function Accounts() {
     addAccount,
     deleteAccount,
     deleteAccounts,
-    switchAccount,
-    loading,
     refreshQuota,
     toggleProxyStatus,
     reorderAccounts,
@@ -323,29 +321,6 @@ function Accounts() {
     await addAccount(email, refreshToken);
   };
 
-  const [switchingAccountId, setSwitchingAccountId] = useState<string | null>(
-    null,
-  );
-
-  const handleSwitch = async (accountId: string, targetIde?: string) => {
-    if (loading || switchingAccountId) return;
-
-    setSwitchingAccountId(accountId);
-    console.log("[Accounts] handleSwitch called for:", accountId, "targetIde:", targetIde);
-    try {
-      await switchAccount(accountId, targetIde);
-      showToast(t("common.success"), "success");
-    } catch (error) {
-      console.error("[Accounts] Switch failed:", error);
-      showToast(`${t("common.error")}: ${error}`, "error");
-    } finally {
-      // Add a small delay for smoother UX
-      setTimeout(() => {
-        setSwitchingAccountId(null);
-      }, 500);
-    }
-  };
-
   const handleRefresh = async (accountId: string) => {
     setRefreshingIds((prev) => {
       const next = new Set(prev);
@@ -377,10 +352,8 @@ function Accounts() {
     setIsBatchDelete(false);
     try {
       const ids = Array.from(selectedIds);
-      console.log("[Accounts] Batch deleting:", ids);
       await deleteAccounts(ids);
       setSelectedIds(new Set());
-      console.log("[Accounts] Batch delete success");
       showToast(t("common.success"), "success");
     } catch (error) {
       console.error("[Accounts] Batch delete failed:", error);
@@ -389,7 +362,6 @@ function Accounts() {
   };
 
   const handleDelete = (accountId: string) => {
-    console.log("[Accounts] Request to delete:", accountId);
     setDeleteConfirmId(accountId);
   };
 
@@ -397,9 +369,7 @@ function Accounts() {
     if (!deleteConfirmId) return;
 
     try {
-      console.log("[Accounts] Executing delete for:", deleteConfirmId);
       await deleteAccount(deleteConfirmId);
-      console.log("[Accounts] Delete success");
       showToast(t("common.success"), "success");
     } catch (error) {
       console.error("[Accounts] Delete failed:", error);
@@ -737,7 +707,6 @@ function Accounts() {
 
   return (
     <div className="h-full flex flex-col p-5 gap-4 max-w-7xl mx-auto w-full">
-      {/* 测试按钮 - 在最顶部 */}
       <input
         ref={fileInputRef}
         type="file"
@@ -746,15 +715,13 @@ function Accounts() {
         onChange={handleFileChange}
       />
 
-      {/* 顶部工具栏:搜索、过滤和操作按钮 */}
       <div className="flex-none flex items-center gap-2">
-        {/* 搜索框 - 响应式:大屏显示输入框,小屏显示图标 */}
         <div className="hidden lg:block flex-none w-40 relative transition-all focus-within:w-48">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
           <input
             type="text"
             placeholder={t('accounts.search_placeholder')}
-            className="w-full pl-9 pr-4 py-2 bg-white dark:bg-base-100 text-sm text-gray-900 dark:text-base-content border border-gray-200 dark:border-base-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400 dark:placeholder:text-gray-500"
+            className="w-full pl-7 pr-2.5 py-1.5 border border-gray-200 dark:border-base-200 rounded bg-white dark:bg-base-200 text-xs text-gray-900 dark:text-base-content focus:ring-1 focus:ring-zinc-950 focus:border-transparent outline-none"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -768,20 +735,20 @@ function Accounts() {
                 setIsSearchExpanded(true);
                 setTimeout(() => searchInputRef.current?.focus(), 100);
               }}
-              className="p-2 bg-gray-100 dark:bg-base-200 hover:bg-gray-200 dark:hover:bg-base-100 rounded-lg transition-colors"
+              className="p-1.5 bg-gray-50 dark:bg-base-200 hover:bg-gray-200 dark:hover:bg-base-100 rounded border border-gray-200 dark:border-base-200 transition-colors"
               title={t('accounts.search_placeholder')}
             >
-              <Search className="w-4 h-4 text-gray-600 dark:text-gray-300" />
+              <Search className="w-3.5 h-3.5 text-gray-600 dark:text-gray-300" />
             </button>
           ) : (
             <div className="absolute left-0 top-0 z-10 w-64 flex items-center gap-1">
               <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
                 <input
                   ref={searchInputRef}
                   type="text"
                   placeholder={t('accounts.search_placeholder')}
-                  className="w-full pl-9 pr-4 py-2 bg-white dark:bg-base-100 text-sm text-gray-900 dark:text-base-content border border-gray-200 dark:border-base-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400 dark:placeholder:text-gray-500 shadow-lg"
+                  className="w-full pl-7 pr-2.5 py-1.5 border border-gray-200 dark:border-base-200 rounded bg-white dark:bg-base-200 text-xs text-gray-900 dark:text-base-content focus:ring-1 focus:ring-zinc-950 focus:border-transparent outline-none shadow-sm"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onBlur={() => setIsSearchExpanded(false)}
@@ -792,52 +759,52 @@ function Accounts() {
         </div>
 
         {/* 视图切换按钮组 */}
-        <div className="flex gap-1 bg-gray-100 dark:bg-base-200 p-1 rounded-lg shrink-0">
+        <div className="flex gap-0.5 bg-gray-50 dark:bg-base-200 p-0.5 rounded border border-gray-200 dark:border-base-250 shrink-0">
           <button
             className={cn(
-              "p-1.5 rounded-md transition-all",
+              "p-1 rounded text-xs transition-colors",
               viewMode === "list"
-                ? "bg-white dark:bg-base-100 text-blue-600 dark:text-blue-400 shadow-sm"
-                : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-base-content",
+                ? "bg-white dark:bg-base-100 text-gray-950 dark:text-gray-100 shadow-sm"
+                : "text-gray-500 hover:text-gray-900 dark:hover:text-gray-100",
             )}
             onClick={() => setViewMode("list")}
             title={t("accounts.views.list")}
           >
-            <List className="w-4 h-4" />
+            <List className="w-3.5 h-3.5" />
           </button>
           <button
             className={cn(
-              "p-1.5 rounded-md transition-all",
+              "p-1 rounded text-xs transition-colors",
               viewMode === "grid"
-                ? "bg-white dark:bg-base-100 text-blue-600 dark:text-blue-400 shadow-sm"
-                : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-base-content",
+                ? "bg-white dark:bg-base-100 text-gray-950 dark:text-gray-100 shadow-sm"
+                : "text-gray-500 hover:text-gray-900 dark:hover:text-gray-100",
             )}
             onClick={() => setViewMode("grid")}
             title={t("accounts.views.grid")}
           >
-            <LayoutGrid className="w-4 h-4" />
+            <LayoutGrid className="w-3.5 h-3.5" />
           </button>
         </div>
 
         {/* 过滤按钮组 - 图标化响应式 */}
-        <div className="flex gap-0.5 bg-gray-100/80 dark:bg-base-200 p-1 rounded-xl border border-gray-200/50 dark:border-white/5 shrink-0">
+        <div className="flex gap-0.5 bg-gray-50 dark:bg-base-200 p-0.5 rounded border border-gray-200 dark:border-base-250 shrink-0">
           {/* 全部 */}
           <button
             className={cn(
-              "px-2 md:px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all flex items-center gap-1 md:gap-1.5 whitespace-nowrap shrink-0",
+              "px-2 py-1 rounded text-xs font-medium transition-colors flex items-center gap-1 shrink-0",
               filter === 'all'
-                ? "bg-white dark:bg-base-100 text-blue-600 dark:text-blue-400 shadow-sm ring-1 ring-black/5"
-                : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-base-content hover:bg-white/40"
+                ? "bg-white dark:bg-base-100 text-gray-950 dark:text-gray-100 shadow-sm"
+                : "text-gray-500 hover:text-gray-900 dark:hover:text-gray-100"
             )}
             onClick={() => setFilter('all')}
             title={`${t('accounts.all')} (${filterCounts.all})`}
           >
             <span className="hidden md:inline">{t('accounts.all')}</span>
             <span className={cn(
-              "px-1.5 py-0.5 rounded-md text-[10px] font-bold transition-colors",
+              "px-1 py-0.2 rounded text-[9px] font-mono font-semibold transition-colors",
               filter === 'all'
-                ? "bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400"
-                : "bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
+                ? "bg-zinc-100 dark:bg-zinc-800 text-zinc-950 dark:text-zinc-200"
+                : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
             )}>
               {filterCounts.all}
             </span>
@@ -846,20 +813,20 @@ function Accounts() {
           {/* PRO */}
           <button
             className={cn(
-              "px-2 md:px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all flex items-center gap-1 md:gap-1.5 whitespace-nowrap shrink-0",
+              "px-2 py-1 rounded text-xs font-medium transition-colors flex items-center gap-1 shrink-0",
               filter === 'pro'
-                ? "bg-white dark:bg-base-100 text-blue-600 dark:text-blue-400 shadow-sm ring-1 ring-black/5"
-                : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-base-content hover:bg-white/40"
+                ? "bg-white dark:bg-base-100 text-gray-950 dark:text-gray-100 shadow-sm"
+                : "text-gray-500 hover:text-gray-900 dark:hover:text-gray-100"
             )}
             onClick={() => setFilter('pro')}
             title={`${t('accounts.pro')} (${filterCounts.pro})`}
           >
             <span className="hidden md:inline">{t('accounts.pro')}</span>
             <span className={cn(
-              "px-1.5 py-0.5 rounded-md text-[10px] font-bold transition-colors",
+              "px-1 py-0.2 rounded text-[9px] font-mono font-semibold transition-colors",
               filter === 'pro'
-                ? "bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400"
-                : "bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
+                ? "bg-zinc-100 dark:bg-zinc-800 text-zinc-950 dark:text-zinc-200"
+                : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
             )}>
               {filterCounts.pro}
             </span>
@@ -868,20 +835,20 @@ function Accounts() {
           {/* ULTRA */}
           <button
             className={cn(
-              "flex px-2 lg:px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all items-center gap-1 lg:gap-1.5 whitespace-nowrap shrink-0",
+              "px-2 py-1 rounded text-xs font-medium transition-colors flex items-center gap-1 shrink-0",
               filter === 'ultra'
-                ? "bg-white dark:bg-base-100 text-blue-600 dark:text-blue-400 shadow-sm ring-1 ring-black/5"
-                : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-base-content hover:bg-white/40"
+                ? "bg-white dark:bg-base-100 text-gray-950 dark:text-gray-100 shadow-sm"
+                : "text-gray-500 hover:text-gray-900 dark:hover:text-gray-100"
             )}
             onClick={() => setFilter('ultra')}
             title={`${t('accounts.ultra')} (${filterCounts.ultra})`}
           >
             <span className="hidden md:inline">{t('accounts.ultra')}</span>
             <span className={cn(
-              "px-1.5 py-0.5 rounded-md text-[10px] font-bold transition-colors",
+              "px-1 py-0.2 rounded text-[9px] font-mono font-semibold transition-colors",
               filter === 'ultra'
-                ? "bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400"
-                : "bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
+                ? "bg-zinc-100 dark:bg-zinc-800 text-zinc-950 dark:text-zinc-200"
+                : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
             )}>
               {filterCounts.ultra}
             </span>
@@ -890,20 +857,20 @@ function Accounts() {
           {/* FREE */}
           <button
             className={cn(
-              "flex px-2 lg:px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all items-center gap-1 lg:gap-1.5 whitespace-nowrap shrink-0",
+              "px-2 py-1 rounded text-xs font-medium transition-colors flex items-center gap-1 shrink-0",
               filter === 'free'
-                ? "bg-white dark:bg-base-100 text-blue-600 dark:text-blue-400 shadow-sm ring-1 ring-black/5"
-                : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-base-content hover:bg-white/40"
+                ? "bg-white dark:bg-base-100 text-gray-950 dark:text-gray-100 shadow-sm"
+                : "text-gray-500 hover:text-gray-900 dark:hover:text-gray-100"
             )}
             onClick={() => setFilter('free')}
             title={`${t('accounts.free')} (${filterCounts.free})`}
           >
             <span className="hidden md:inline">{t('accounts.free')}</span>
             <span className={cn(
-              "px-1.5 py-0.5 rounded-md text-[10px] font-bold transition-colors",
+              "px-1 py-0.2 rounded text-[9px] font-mono font-semibold transition-colors",
               filter === 'free'
-                ? "bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400"
-                : "bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
+                ? "bg-zinc-100 dark:bg-zinc-800 text-zinc-950 dark:text-zinc-200"
+                : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
             )}>
               {filterCounts.free}
             </span>
@@ -919,7 +886,7 @@ function Accounts() {
           {selectedIds.size > 0 && (
             <>
               <button
-                className="px-2.5 py-2 bg-red-500 text-white text-xs font-medium rounded-lg hover:bg-red-600 transition-colors flex items-center gap-1.5 shadow-sm"
+                className="px-2.5 py-1.5 border border-red-200 dark:border-red-900/30 text-red-600 dark:text-red-400 text-xs font-semibold rounded-md hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors flex items-center gap-1.5"
                 onClick={handleBatchDelete}
                 title={t("accounts.delete_selected", {
                   count: selectedIds.size,
@@ -931,7 +898,7 @@ function Accounts() {
                 </span>
               </button>
               <button
-                className="px-2.5 py-2 bg-orange-500 text-white text-xs font-medium rounded-lg hover:bg-orange-600 transition-colors flex items-center gap-1.5 shadow-sm"
+                className="px-2.5 py-1.5 border border-gray-200 dark:border-base-200 text-gray-700 dark:text-gray-300 text-xs font-semibold rounded-md hover:bg-gray-50 dark:hover:bg-base-200 transition-colors flex items-center gap-1.5"
                 onClick={() => handleBatchToggleProxy(false)}
                 title={t("accounts.disable_proxy_selected", {
                   count: selectedIds.size,
@@ -945,7 +912,7 @@ function Accounts() {
                 </span>
               </button>
               <button
-                className="px-2.5 py-2 bg-green-500 text-white text-xs font-medium rounded-lg hover:bg-green-600 transition-colors flex items-center gap-1.5 shadow-sm"
+                className="px-2.5 py-1.5 border border-gray-200 dark:border-base-200 text-gray-700 dark:text-gray-300 text-xs font-semibold rounded-md hover:bg-gray-50 dark:hover:bg-base-200 transition-colors flex items-center gap-1.5"
                 onClick={() => handleBatchToggleProxy(true)}
                 title={t("accounts.enable_proxy_selected", {
                   count: selectedIds.size,
@@ -962,7 +929,7 @@ function Accounts() {
           )}
 
           <button
-            className={`px-2.5 py-2 bg-blue-500 text-white text-xs font-medium rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-1.5 shadow-sm ${isRefreshing ? "opacity-70 cursor-not-allowed" : ""}`}
+            className={`px-2.5 py-1.5 border border-gray-200 dark:border-base-200 text-gray-700 dark:text-gray-300 text-xs font-semibold rounded-md hover:bg-gray-50 dark:hover:bg-base-200 transition-colors flex items-center gap-1.5 ${isRefreshing ? "opacity-50 cursor-not-allowed" : ""}`}
             onClick={handleRefreshClick}
             disabled={isRefreshing}
             title={
@@ -984,7 +951,7 @@ function Accounts() {
           </button>
 
           <button
-            className={`px-2.5 py-2 bg-orange-500 text-white text-xs font-medium rounded-lg hover:bg-orange-600 transition-colors flex items-center gap-1.5 shadow-sm ${isWarmuping ? "opacity-70 cursor-not-allowed" : ""}`}
+            className={`px-2.5 py-1.5 border border-gray-200 dark:border-base-200 text-gray-700 dark:text-gray-300 text-xs font-semibold rounded-md hover:bg-gray-50 dark:hover:bg-base-200 transition-colors flex items-center gap-1.5 ${isWarmuping ? "opacity-50 cursor-not-allowed" : ""}`}
             onClick={() => setIsWarmupConfirmOpen(true)}
             disabled={isWarmuping}
             title={
@@ -1005,13 +972,13 @@ function Accounts() {
             </span>
           </button>
 
-          <label className="flex items-center gap-2 cursor-pointer select-none px-2 py-2 border border-transparent hover:bg-gray-100 dark:hover:bg-base-200 rounded-lg transition-colors" title={t('accounts.show_all_quotas')}>
-            <span className="text-xs font-medium text-gray-600 dark:text-gray-300 hidden xl:inline">
+          <label className="flex items-center gap-2 cursor-pointer select-none px-2 py-1.5 border border-transparent hover:bg-gray-50 dark:hover:bg-base-200 rounded transition-colors" title={t('accounts.show_all_quotas')}>
+            <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 hidden xl:inline">
               {t('accounts.show_all_quotas')}
             </span>
             <input
               type="checkbox"
-              className="toggle toggle-xs toggle-primary"
+              className="toggle toggle-xs border-gray-300 dark:border-gray-600 checked:bg-blue-600 checked:border-blue-600"
               checked={showAllQuotas}
               onChange={toggleShowAllQuotas}
             />
@@ -1019,7 +986,7 @@ function Accounts() {
           <div className="w-px h-4 bg-gray-200 dark:bg-gray-700 self-center mx-1 shrink-0"></div>
 
           <button
-            className="px-2.5 py-2 border border-gray-200 dark:border-base-300 text-gray-700 dark:text-gray-300 text-xs font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-base-200 transition-colors flex items-center gap-1.5"
+            className="px-2.5 py-1.5 border border-gray-200 dark:border-base-200 text-gray-750 dark:text-gray-305 text-xs font-semibold rounded-md hover:bg-gray-50 dark:hover:bg-base-200 transition-colors flex items-center gap-1.5"
             onClick={handleImportJson}
             title={t("accounts.import_json")}
           >
@@ -1030,7 +997,7 @@ function Accounts() {
           </button>
 
           <button
-            className="px-2.5 py-2 border border-gray-200 dark:border-base-300 text-gray-700 dark:text-gray-300 text-xs font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-base-200 transition-colors flex items-center gap-1.5"
+            className="px-2.5 py-1.5 border border-gray-200 dark:border-base-200 text-gray-750 dark:text-gray-305 text-xs font-semibold rounded-md hover:bg-gray-50 dark:hover:bg-base-200 transition-colors flex items-center gap-1.5"
             onClick={handleExport}
             title={
               selectedIds.size > 0
@@ -1060,8 +1027,7 @@ function Accounts() {
                 onToggleSelect={handleToggleSelect}
                 onToggleAll={handleToggleAll}
                 currentAccountId={currentAccount?.id || null}
-                switchingAccountId={switchingAccountId}
-                onSwitch={handleSwitch}
+                switchingAccountId={null}
                 onRefresh={handleRefresh}
                 onViewDevice={handleViewDevice}
                 onViewDetails={handleViewDetails}
@@ -1088,8 +1054,7 @@ function Accounts() {
               refreshingIds={refreshingIds}
               onToggleSelect={handleToggleSelect}
               currentAccountId={currentAccount?.id || null}
-              switchingAccountId={switchingAccountId}
-              onSwitch={handleSwitch}
+              switchingAccountId={null}
               onRefresh={handleRefresh}
               onViewDevice={handleViewDevice}
               onViewDetails={handleViewDetails}

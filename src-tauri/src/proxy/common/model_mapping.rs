@@ -20,73 +20,23 @@ pub fn update_dynamic_forwarding_rules(old_model: String, new_model: String) {
 static CLAUDE_TO_GEMINI: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
     let mut m = HashMap::new();
 
-    // 直接支持的模型
-    m.insert("claude-sonnet-4-6", "claude-sonnet-4-6");
-    m.insert("claude-sonnet-4-6-thinking", "claude-sonnet-4-6-thinking");
-
-    // [Redirect] Sonnet 4.5 -> Sonnet 4.6
-    m.insert("claude-sonnet-4-5", "claude-sonnet-4-6");
-    m.insert("claude-sonnet-4-5-thinking", "claude-sonnet-4-6-thinking");
-
-    // 别名映射
-    m.insert("claude-sonnet-4-5-20250929", "claude-sonnet-4-6-thinking");
-    m.insert("claude-3-5-sonnet-20241022", "claude-sonnet-4-6");
-    m.insert("claude-3-5-sonnet-20240620", "claude-sonnet-4-6");
-    // [Redirect] Opus 4.5 -> Opus 4.6 (Issue #1743)
-    m.insert("claude-opus-4", "claude-opus-4-6-thinking");
-    m.insert("claude-opus-4-5-thinking", "claude-opus-4-6-thinking");
-    m.insert("claude-opus-4-5-20251101", "claude-opus-4-6-thinking");
-
-    // Claude Opus 4.6
+    // Only expose and route currently available Antigravity quota models.
     m.insert("claude-opus-4-6-thinking", "claude-opus-4-6-thinking");
-    m.insert("claude-opus-4-6", "claude-opus-4-6-thinking");
-    m.insert("claude-opus-4-6-20260201", "claude-opus-4-6-thinking");
-
-    m.insert("claude-haiku-4", "claude-sonnet-4-6");
-    m.insert("claude-3-haiku-20240307", "claude-sonnet-4-6");
-    m.insert("claude-haiku-4-5-20251001", "claude-sonnet-4-6");
-    // OpenAI 协议映射表
-    m.insert("gpt-4", "gemini-2.5-flash");
-    m.insert("gpt-4-turbo", "gemini-2.5-flash");
-    m.insert("gpt-4-turbo-preview", "gemini-2.5-flash");
-    m.insert("gpt-4-0125-preview", "gemini-2.5-flash");
-    m.insert("gpt-4-1106-preview", "gemini-2.5-flash");
-    m.insert("gpt-4-0613", "gemini-2.5-flash");
-
-    m.insert("gpt-4o", "gemini-2.5-flash");
-    m.insert("gpt-4o-2024-05-13", "gemini-2.5-flash");
-    m.insert("gpt-4o-2024-08-06", "gemini-2.5-flash");
-
-    m.insert("gpt-4o-mini", "gemini-2.5-flash");
-    m.insert("gpt-4o-mini-2024-07-18", "gemini-2.5-flash");
-
-    m.insert("gpt-3.5-turbo", "gemini-2.5-flash");
-    m.insert("gpt-3.5-turbo-16k", "gemini-2.5-flash");
-    m.insert("gpt-3.5-turbo-0125", "gemini-2.5-flash");
-    m.insert("gpt-3.5-turbo-1106", "gemini-2.5-flash");
-    m.insert("gpt-3.5-turbo-0613", "gemini-2.5-flash");
-
-    // Gemini 协议映射表
-    m.insert("gemini-2.5-flash-lite", "gemini-2.5-flash");
-    m.insert("gemini-2.5-flash-thinking", "gemini-2.5-flash-thinking");
-    // Gemini Pro family:
-    // - Concrete model IDs should pass through unchanged.
-    // - Generic aliases (without tier) still route to preview as fallback entrypoint.
-    m.insert("gemini-3.1-pro-low", "gemini-3.1-pro-low");
-    m.insert("gemini-3.1-pro-high", "gemini-3.1-pro-high");
-    m.insert("gemini-3.1-pro-preview", "gemini-3.1-pro-preview");
-    m.insert("gemini-3.1-pro", "gemini-3.1-pro-preview");
-    m.insert("gemini-3-pro-low", "gemini-3-pro-low");
-    m.insert("gemini-3-pro-high", "gemini-3-pro-high");
-    m.insert("gemini-3-pro-preview", "gemini-3-pro-preview");
-    m.insert("gemini-3-pro", "gemini-3-pro-preview");
+    m.insert("claude-sonnet-4-6", "claude-sonnet-4-6");
     m.insert("gemini-2.5-flash", "gemini-2.5-flash");
+    m.insert("gemini-2.5-flash-lite", "gemini-2.5-flash-lite");
+    m.insert("gemini-2.5-flash-thinking", "gemini-2.5-flash-thinking");
+    m.insert("gemini-2.5-pro", "gemini-2.5-pro");
     m.insert("gemini-3-flash", "gemini-3-flash");
-    m.insert("gemini-3-pro-image", "gemini-3-pro-image");
-
-    // [New] Unified Virtual ID for Background Tasks (Title, Summary, etc.)
-    // Allows users to override all background tasks via custom_mapping
-    m.insert("internal-background-task", "gemini-2.5-flash");
+    m.insert("gemini-3-flash-agent", "gemini-3-flash-agent");
+    m.insert("gemini-3.1-flash-image", "gemini-3.1-flash-image");
+    m.insert("gemini-3.1-flash-lite", "gemini-3.1-flash-lite");
+    m.insert("gemini-3.1-pro-high", "gemini-3.1-pro-high");
+    m.insert("gemini-3.1-pro-low", "gemini-3.1-pro-low");
+    m.insert("gemini-3.5-flash-extra-low", "gemini-3.5-flash-extra-low");
+    m.insert("gemini-3.5-flash-low", "gemini-3.5-flash-low");
+    m.insert("gemini-pro-agent", "gemini-pro-agent");
+    m.insert("gpt-oss-120b-medium", "gpt-oss-120b-medium");
 
     m
 });
@@ -140,59 +90,27 @@ pub fn get_supported_models() -> Vec<String> {
 
 /// 动态获取所有可用模型列表 (包含内置与用户自定义与官方端点动态下发)
 pub async fn get_all_dynamic_models(
-    custom_mapping: &tokio::sync::RwLock<std::collections::HashMap<String, String>>,
-    token_manager: Option<&crate::proxy::token_manager::TokenManager>,
+    _custom_mapping: &tokio::sync::RwLock<std::collections::HashMap<String, String>>,
+    _token_manager: Option<&crate::proxy::token_manager::TokenManager>,
 ) -> Vec<String> {
-    use std::collections::HashSet;
-    let mut model_ids = HashSet::new();
-
-    // 1. 获取所有内置映射模型
-    for m in get_supported_models() {
-        model_ids.insert(m);
-    }
-
-    // 2. 获取所有自定义映射模型 (Custom)
-    {
-        let mapping = custom_mapping.read().await;
-        for key in mapping.keys() {
-            model_ids.insert(key.clone());
-        }
-    }
-
-    // 3. [NEW] 获取所有账号从官方接口汇聚而来的动态模型
-    if let Some(tm) = token_manager {
-        for dynamic_model in tm.get_all_collected_models() {
-            model_ids.insert(dynamic_model);
-        }
-    }
-
-    // 5. 确保包含常用的 Gemini/画画模型 ID
-    model_ids.insert("gemini-3.1-pro-low".to_string());
-
-    // [NEW] Issue #247: Dynamically generate all Image Gen Combinations
-    let base = "gemini-3-pro-image";
-    let resolutions = vec!["", "-2k", "-4k"];
-    let ratios = vec!["", "-1x1", "-4x3", "-3x4", "-16x9", "-9x16", "-21x9"];
-
-    for res in resolutions {
-        for ratio in ratios.iter() {
-            let mut id = base.to_string();
-            id.push_str(res);
-            id.push_str(ratio);
-            model_ids.insert(id);
-        }
-    }
-
-    model_ids.insert("gemini-2.0-flash-exp".to_string());
-    model_ids.insert("gemini-2.5-flash".to_string());
-    // gemini-2.5-pro removed
-    model_ids.insert("gemini-3-flash".to_string());
-    model_ids.insert("gemini-3.1-pro-high".to_string());
-    model_ids.insert("gemini-3.1-pro-low".to_string());
-
-    let mut sorted_ids: Vec<_> = model_ids.into_iter().collect();
-    sorted_ids.sort();
-    sorted_ids
+    vec![
+        "claude-opus-4-6-thinking".to_string(),
+        "claude-sonnet-4-6".to_string(),
+        "gemini-pro-agent".to_string(),
+        "gemini-3.1-pro-high".to_string(),
+        "gemini-3.1-pro-low".to_string(),
+        "gemini-3-flash".to_string(),
+        "gemini-3-flash-agent".to_string(),
+        "gemini-3.5-flash-low".to_string(),
+        "gemini-3.5-flash-extra-low".to_string(),
+        "gemini-3.1-flash-image".to_string(),
+        "gemini-3.1-flash-lite".to_string(),
+        "gemini-2.5-pro".to_string(),
+        "gemini-2.5-flash".to_string(),
+        "gemini-2.5-flash-thinking".to_string(),
+        "gemini-2.5-flash-lite".to_string(),
+        "gpt-oss-120b-medium".to_string(),
+    ]
 }
 
 /// Wildcard matching - supports multiple wildcards
@@ -313,8 +231,8 @@ pub fn resolve_model_route(
 ///
 /// Standard IDs:
 /// - `gemini-3-flash`: All Flash variants (1.5-flash, 2.5-flash, 3-flash, etc.)
-/// - `gemini-3-pro-high`: All Pro variants (1.5-pro, 2.5-pro, etc.)
-/// - `claude-sonnet-4-5`: All Claude Sonnet variants (3-5-sonnet, sonnet-4-5, etc.)
+/// - `gemini-3.1-pro-high`: Pro quota group
+/// - `claude-sonnet-4-6`: Claude quota group
 ///
 /// Returns `None` if the model doesn't match any of the 3 protected categories.
 pub fn normalize_to_standard_id(model_name: &str) -> Option<String> {
@@ -322,7 +240,7 @@ pub fn normalize_to_standard_id(model_name: &str) -> Option<String> {
 
     // 1. image 资源 (优先匹配，使用 contains 匹配以支持任何变体，如 gemini-3.1-flash-image)
     if lower.contains("image") {
-        return Some("gemini-3-pro-image".to_string());
+        return Some("gemini-3.1-flash-image".to_string());
     }
 
     // 2. gemini-3-flash (包含所有 flash 变体)
@@ -330,9 +248,9 @@ pub fn normalize_to_standard_id(model_name: &str) -> Option<String> {
         return Some("gemini-3-flash".to_string());
     }
 
-    // 3. gemini-3-pro-high (包含 pro 变体)
+    // 3. gemini-3.1-pro-high (包含 pro 变体)
     if lower.contains("pro") && !lower.contains("image") {
-        return Some("gemini-3-pro-high".to_string());
+        return Some("gemini-3.1-pro-high".to_string());
     }
 
     // 4. Claude 系列 (合并 Opus, Sonnet, Haiku 为统一保护组 'claude')
@@ -341,7 +259,7 @@ pub fn normalize_to_standard_id(model_name: &str) -> Option<String> {
         || lower.contains("sonnet")
         || lower.contains("haiku")
     {
-        return Some("claude".to_string());
+        return Some("claude-sonnet-4-6".to_string());
     }
 
     None

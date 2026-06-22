@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, Trash2, RefreshCw, Copy, Activity, User, Settings, Shield, Clock, Users } from 'lucide-react';
+import { Plus, Trash2, RefreshCw, Copy, Settings, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { request as invoke } from '../utils/request';
 import { showToast } from '../components/common/ToastContainer';
@@ -17,6 +17,7 @@ interface UserToken {
     max_ips: number;
     curfew_start?: string;
     curfew_end?: string;
+    curfew_timezone?: string;
     created_at: number;
     updated_at: number;
     last_used_at?: number;
@@ -49,6 +50,7 @@ const UserToken: React.FC = () => {
     const [editMaxIps, setEditMaxIps] = useState(0);
     const [editCurfewStart, setEditCurfewStart] = useState('');
     const [editCurfewEnd, setEditCurfewEnd] = useState('');
+    const [editCurfewTimezone, setEditCurfewTimezone] = useState('UTC+08:00');
     const [updating, setUpdating] = useState(false);
 
     // Create Form State
@@ -58,7 +60,10 @@ const UserToken: React.FC = () => {
     const [newMaxIps, setNewMaxIps] = useState(0);
     const [newCurfewStart, setNewCurfewStart] = useState('');
     const [newCurfewEnd, setNewCurfewEnd] = useState('');
+    const [newCurfewTimezone, setNewCurfewTimezone] = useState('UTC+08:00');
     const [newCustomExpires, setNewCustomExpires] = useState(''); // datetime-local value
+
+    const timezoneOptions = ['UTC-08:00', 'UTC-05:00', 'UTC+00:00', 'UTC+01:00', 'UTC+07:00', 'UTC+08:00', 'UTC+09:00'];
 
     const loadData = async () => {
         setLoading(true);
@@ -108,6 +113,7 @@ const UserToken: React.FC = () => {
                     max_ips: newMaxIps,
                     curfew_start: newCurfewStart || null,
                     curfew_end: newCurfewEnd || null,
+                    curfew_timezone: newCurfewTimezone,
                     custom_expires_at: customExpiresAt || null
                 }
             });
@@ -119,6 +125,7 @@ const UserToken: React.FC = () => {
             setNewMaxIps(0);
             setNewCurfewStart('');
             setNewCurfewEnd('');
+            setNewCurfewTimezone('UTC+08:00');
             setNewCustomExpires('');
             loadData();
         } catch (e) {
@@ -140,13 +147,13 @@ const UserToken: React.FC = () => {
     };
 
     const handleEdit = (token: UserToken) => {
-        console.log('Editing token:', token); // 调试日志
         setEditingToken(token);
         setEditUsername(token.username);
         setEditDesc(token.description || '');
-        setEditMaxIps(token.max_ips ?? 0);  // 使用 ?? 确保 null/undefined 变为 0
+        setEditMaxIps(token.max_ips ?? 0);
         setEditCurfewStart(token.curfew_start ?? '');
         setEditCurfewEnd(token.curfew_end ?? '');
+        setEditCurfewTimezone(token.curfew_timezone ?? 'UTC+08:00');
         setShowEditModal(true);
     };
 
@@ -167,7 +174,8 @@ const UserToken: React.FC = () => {
                     max_ips: editMaxIps,
                     // 使用双层包装: undefined = 不更新, null = 清空, string = 设置值
                     curfew_start: editCurfewStart === '' ? null : editCurfewStart,
-                    curfew_end: editCurfewEnd === '' ? null : editCurfewEnd
+                    curfew_end: editCurfewEnd === '' ? null : editCurfewEnd,
+                    curfew_timezone: editCurfewTimezone
                 }
             });
             showToast(t('common.update_success') || 'Updated successfully', 'success');
@@ -226,109 +234,73 @@ const UserToken: React.FC = () => {
         return 'text-green-500';
     };
 
+    const modalInputClass = "h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition-colors placeholder:text-gray-400 focus:border-gray-400 dark:border-base-300 dark:bg-base-100 dark:text-base-content";
+    const modalLabelClass = "text-[10px] font-bold uppercase tracking-[0.18em] text-gray-400";
+    const modalHintClass = "mt-1.5 text-[11px] font-medium text-gray-500 dark:text-gray-400";
+
     return (
-        <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="h-full flex flex-col p-5 gap-5 max-w-7xl mx-auto w-full"
-        >
+        <div className="h-full flex flex-col p-5 gap-4 max-w-7xl mx-auto w-full">
             {/* Header */}
             <div className="flex justify-between items-center">
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                    <div className="p-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-                        <User className="text-purple-500 w-5 h-5" />
-                    </div>
+                <h1 className="text-lg font-semibold tracking-tight text-gray-950 dark:text-base-content flex items-center gap-2">
                     {t('user_token.title', { defaultValue: 'User Tokens' })}
                 </h1>
 
                 <div className="flex items-center gap-2">
                     <button
                         onClick={() => loadData()}
-                        className={`p-2 hover:bg-gray-100 dark:hover:bg-base-200 rounded-lg transition-colors ${loading ? 'text-blue-500' : 'text-gray-500'}`}
+                        className={`p-1.5 hover:bg-gray-50 dark:hover:bg-base-200 rounded border border-gray-200 dark:border-base-200 transition-colors ${loading ? 'text-zinc-950' : 'text-gray-400'}`}
                         title={t('common.refresh') || 'Refresh'}
                     >
-                        <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
+                        <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
                     </button>
                     <button
                         onClick={() => setShowCreateModal(true)}
-                        className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-all flex items-center gap-2 shadow-sm shadow-blue-500/20"
+                        className="px-3 py-1.5 bg-zinc-950 hover:bg-zinc-800 text-white dark:bg-zinc-50 dark:text-zinc-950 dark:hover:bg-white text-xs font-semibold rounded-md transition-colors flex items-center gap-2 shadow-sm"
                     >
-                        <Plus size={16} />
+                        <Plus size={14} />
                         <span>{t('user_token.create', { defaultValue: 'Create Token' })}</span>
                     </button>
                 </div>
             </div>
 
             {/* Stats Cards Row */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <motion.div
-                    whileHover={{ y: -2 }}
-                    className="bg-white dark:bg-base-100 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-base-200"
-                >
-                    <div className="flex items-center justify-between mb-2">
-                        <div className="p-1.5 bg-blue-50 dark:bg-blue-900/20 rounded-md">
-                            <Users className="w-4 h-4 text-blue-500" />
-                        </div>
+            <div className="border border-gray-200 dark:border-base-200 bg-white dark:bg-base-100 rounded-lg overflow-hidden">
+                <dl className="grid grid-cols-2 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-gray-200 dark:divide-base-200">
+                    <div className="px-4 py-3 min-w-0">
+                        <dt className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold">{t('user_token.total_users', { defaultValue: 'Total Users' })}</dt>
+                        <dd className="mt-1 font-mono text-xs text-gray-900 dark:text-gray-100 truncate">{stats?.total_users || 0}</dd>
                     </div>
-                    <div className="text-2xl font-bold text-gray-900 dark:text-base-content mb-0.5">{stats?.total_users || 0}</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">{t('user_token.total_users', { defaultValue: 'Total Users' })}</div>
-                </motion.div>
-
-                <motion.div
-                    whileHover={{ y: -2 }}
-                    className="bg-white dark:bg-base-100 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-base-200"
-                >
-                    <div className="flex items-center justify-between mb-2">
-                        <div className="p-1.5 bg-green-50 dark:bg-green-900/20 rounded-md">
-                            <Activity className="w-4 h-4 text-green-500" />
-                        </div>
+                    <div className="px-4 py-3 min-w-0">
+                        <dt className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold">{t('user_token.active_tokens', { defaultValue: 'Active Tokens' })}</dt>
+                        <dd className="mt-1 font-mono text-xs text-gray-900 dark:text-gray-100 truncate">{stats?.active_tokens || 0}</dd>
                     </div>
-                    <div className="text-2xl font-bold text-gray-900 dark:text-base-content mb-0.5">{stats?.active_tokens || 0}</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">{t('user_token.active_tokens', { defaultValue: 'Active Tokens' })}</div>
-                </motion.div>
-
-                <motion.div
-                    whileHover={{ y: -2 }}
-                    className="bg-white dark:bg-base-100 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-base-200"
-                >
-                    <div className="flex items-center justify-between mb-2">
-                        <div className="p-1.5 bg-purple-50 dark:bg-purple-900/20 rounded-md">
-                            <Clock className="w-4 h-4 text-purple-500" />
-                        </div>
+                    <div className="px-4 py-3 min-w-0">
+                        <dt className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold">{t('user_token.total_created', { defaultValue: 'Total Tokens' })}</dt>
+                        <dd className="mt-1 font-mono text-xs text-gray-900 dark:text-gray-100 truncate">{stats?.total_tokens || 0}</dd>
                     </div>
-                    <div className="text-2xl font-bold text-gray-900 dark:text-base-content mb-0.5">{stats?.total_tokens || 0}</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">{t('user_token.total_created', { defaultValue: 'Total Tokens' })}</div>
-                </motion.div>
-
-                <motion.div
-                    whileHover={{ y: -2 }}
-                    className="bg-white dark:bg-base-100 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-base-200"
-                >
-                    <div className="flex items-center justify-between mb-2">
-                        <div className="p-1.5 bg-orange-50 dark:bg-orange-900/20 rounded-md">
-                            <Shield className="w-4 h-4 text-orange-500" />
-                        </div>
+                    <div className="px-4 py-3 min-w-0">
+                        <dt className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold">{t('user_token.today_requests', { defaultValue: 'Today Requests' })}</dt>
+                        <dd className="mt-1 font-mono text-xs text-gray-900 dark:text-gray-100 truncate">{stats?.today_requests || 0}</dd>
                     </div>
-                    <div className="text-2xl font-bold text-gray-900 dark:text-base-content mb-0.5">{stats?.today_requests || 0}</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">{t('user_token.today_requests', { defaultValue: 'Today Requests' })}</div>
-                </motion.div>
+                </dl>
             </div>
 
             {/* Token List */}
-            <div className="flex-1 overflow-auto bg-white dark:bg-base-100 rounded-2xl shadow-sm border border-gray-100 dark:border-base-200">
+            <div className="flex-1 overflow-auto bg-white dark:bg-base-100 rounded-lg border border-gray-200 dark:border-base-200">
                 <table className="table table-pin-rows">
                     <thead>
                         <tr className="bg-gray-50/50 dark:bg-base-200/50">
-                            <th className="bg-transparent text-gray-500 font-medium py-4">{t('user_token.username', { defaultValue: 'Username' })}</th>
-                            <th className="bg-transparent text-gray-500 font-medium py-4">{t('user_token.token', { defaultValue: 'Token' })}</th>
-                            <th className="bg-transparent text-gray-500 font-medium py-4">{t('user_token.expires', { defaultValue: 'Expires' })}</th>
-                            <th className="bg-transparent text-gray-500 font-medium py-4">{t('user_token.usage', { defaultValue: 'Usage' })}</th>
-                            <th className="bg-transparent text-gray-500 font-medium py-4">{t('user_token.ip_limit', { defaultValue: 'IP Limit' })}</th>
-                            <th className="bg-transparent text-gray-500 font-medium py-4">{t('user_token.created', { defaultValue: 'Created' })}</th>
-                            <th className="bg-transparent text-gray-500 font-medium py-4 text-right">{t('common.actions', { defaultValue: 'Actions' })}</th>
+                            <th className="bg-transparent text-zinc-400 text-[10px] uppercase tracking-wider font-semibold py-3">{t('user_token.username', { defaultValue: 'Username' })}</th>
+                            <th className="bg-transparent text-zinc-400 text-[10px] uppercase tracking-wider font-semibold py-3">{t('user_token.token', { defaultValue: 'Token' })}</th>
+                            <th className="bg-transparent text-zinc-400 text-[10px] uppercase tracking-wider font-semibold py-3">{t('user_token.expires', { defaultValue: 'Expires' })}</th>
+                            <th className="bg-transparent text-zinc-400 text-[10px] uppercase tracking-wider font-semibold py-3">{t('user_token.usage', { defaultValue: 'Usage' })}</th>
+                            <th className="bg-transparent text-zinc-400 text-[10px] uppercase tracking-wider font-semibold py-3">{t('user_token.ip_limit', { defaultValue: 'IP Limit' })}</th>
+                            <th className="bg-transparent text-zinc-400 text-[10px] uppercase tracking-wider font-semibold py-3">{t('user_token.created', { defaultValue: 'Created' })}</th>
+                            <th className="bg-transparent text-zinc-400 text-[10px] uppercase tracking-wider font-semibold py-3 text-right">{t('common.actions', { defaultValue: 'Actions' })}</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-50 dark:divide-base-200">
+                    <tbody className="divide-y divide-gray-100 dark:divide-base-200">
                         <AnimatePresence mode="popLayout">
                             {tokens.map((token, index) => (
                                 <motion.tr
@@ -339,42 +311,37 @@ const UserToken: React.FC = () => {
                                     transition={{ delay: index * 0.03 }}
                                     className="hover:bg-gray-50/80 dark:hover:bg-base-200/50 transition-colors group"
                                 >
-                                    <td className="py-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded-full bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center text-purple-600 font-bold text-xs">
-                                                {token.username.substring(0, 2).toUpperCase()}
-                                            </div>
-                                            <div>
-                                                <div className="font-semibold text-gray-900 dark:text-white uppercase tracking-wider text-xs">{token.username}</div>
-                                                <div className="text-[10px] text-gray-500">{token.description || '-'}</div>
-                                            </div>
+                                    <td className="py-3">
+                                        <div>
+                                            <div className="font-semibold text-gray-900 dark:text-white uppercase tracking-wider text-xs">{token.username}</div>
+                                            <div className="text-[10px] text-gray-400">{token.description || '-'}</div>
                                         </div>
                                     </td>
                                     <td>
-                                        <div className="flex items-center gap-2 group/token">
-                                            <code className="bg-gray-50 dark:bg-base-200 px-2 py-1 rounded border border-gray-100 dark:border-base-300 text-[11px] font-mono text-gray-600 dark:text-gray-400">
+                                        <div className="flex items-center gap-1.5 group/token">
+                                            <code className="bg-gray-50 dark:bg-base-200 px-2 py-0.5 rounded border border-gray-200 dark:border-base-300 text-[10px] font-mono text-gray-600 dark:text-gray-400">
                                                 {token.token.substring(0, 8)}••••••••
                                             </code>
                                             <button
                                                 onClick={() => handleCopyToken(token.token)}
-                                                className="p-1.5 hover:bg-gray-200 dark:hover:bg-base-300 rounded-md transition-all text-gray-400 hover:text-gray-600 dark:hover:text-white"
+                                                className="p-1 hover:bg-gray-100 dark:hover:bg-base-300 rounded text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
                                             >
-                                                <Copy size={13} />
+                                                <Copy size={12} />
                                             </button>
                                         </div>
                                     </td>
                                     <td>
-                                        <div className={`text-xs font-medium mb-1 ${getExpiresStatus(token.expires_at)}`}>
+                                        <div className={`text-xs font-mono font-semibold mb-0.5 ${getExpiresStatus(token.expires_at)}`}>
                                             {token.expires_at ? formatTime(token.expires_at) : t('user_token.never', { defaultValue: 'Never' })}
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            <span className="text-[10px] px-1.5 py-0.5 bg-gray-100 dark:bg-base-200 text-gray-500 rounded lowercase">
+                                            <span className="text-[9px] px-1 py-0.5 bg-gray-50 dark:bg-base-200 text-gray-450 border border-gray-200 dark:border-base-300 rounded font-semibold uppercase tracking-wider">
                                                 {getExpiresLabel(token.expires_type)}
                                             </span>
                                             {token.expires_at && token.expires_at < Date.now() / 1000 && (
                                                 <button
                                                     onClick={() => handleRenew(token.id, token.expires_type)}
-                                                    className="text-[10px] text-blue-500 hover:underline font-medium"
+                                                    className="text-[9px] text-zinc-950 hover:underline font-semibold uppercase tracking-wider"
                                                 >
                                                     {t('user_token.renew_button', { defaultValue: 'Renew' })}
                                                 </button>
@@ -382,51 +349,51 @@ const UserToken: React.FC = () => {
                                         </div>
                                     </td>
                                     <td>
-                                        <div className="text-xs font-semibold text-gray-700 dark:text-gray-300">{token.total_requests} <span className="text-[10px] font-normal text-gray-400">reqs</span></div>
-                                        <div className="text-[10px] text-gray-400 mt-0.5">
+                                        <div className="text-xs font-mono font-semibold text-gray-700 dark:text-gray-300">{token.total_requests} <span className="text-[9px] font-normal text-gray-400 font-sans">reqs</span></div>
+                                        <div className="text-[10px] font-mono text-gray-400 mt-0.5">
                                             {(token.total_tokens_used / 1000).toFixed(1)}k tokens
                                         </div>
                                     </td>
                                     <td>
                                         {token.max_ips === 0
-                                            ? <span className="px-2 py-0.5 bg-gray-100 dark:bg-base-200 text-gray-500 text-[10px] rounded-full">{t('user_token.unlimited', { defaultValue: 'Unlimited' })}</span>
-                                            : <span className="px-2 py-0.5 bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 text-[10px] font-medium rounded-full border border-orange-100 dark:border-orange-900/30">{token.max_ips} IPs</span>
+                                            ? <span className="px-1.5 py-0.5 border border-gray-200 dark:border-base-200 text-gray-500 text-[10px] rounded bg-gray-50 dark:bg-base-200 font-mono font-semibold">{t('user_token.unlimited', { defaultValue: 'Unlimited' })}</span>
+                                            : <span className="px-1.5 py-0.5 border border-amber-200 dark:border-amber-900/40 text-amber-700 dark:text-amber-400 text-[10px] font-mono font-semibold rounded bg-amber-50 dark:bg-amber-900/10">{token.max_ips} IPs</span>
                                         }
                                         {token.curfew_start && token.curfew_end && (
-                                            <div className="text-[10px] text-gray-400 mt-1.5 flex items-center gap-1 bg-gray-50 dark:bg-base-200 w-fit px-1.5 py-0.5 rounded">
-                                                <Clock size={10} className="text-orange-500" />
+                                            <div className="text-[9px] text-gray-400 mt-1 flex items-center gap-1 bg-gray-50 dark:bg-base-200 border border-gray-200 dark:border-base-300 w-fit px-1 rounded font-mono font-semibold">
+                                                <Clock size={9} className="text-gray-400" />
                                                 <span>{token.curfew_start} - {token.curfew_end}</span>
                                             </div>
                                         )}
                                     </td>
-                                    <td className="text-[10px] text-gray-400 italic">
+                                    <td className="text-[10px] font-mono text-gray-400">
                                         {formatTime(token.created_at)}
                                     </td>
                                     <td className="text-right">
-                                        <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <button
                                                 onClick={() => handleEdit(token)}
-                                                className="p-1.5 hover:bg-gray-100 dark:hover:bg-base-200 rounded-lg text-gray-500 hover:text-blue-500 transition-colors"
+                                                className="flex h-7 w-7 items-center justify-center rounded-md border border-gray-200 text-gray-450 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:border-base-200 dark:hover:bg-base-200 dark:hover:text-white"
                                                 title={t('common.edit', { defaultValue: 'Edit' })}
                                             >
-                                                <Settings size={14} />
+                                                <Settings size={12} />
                                             </button>
-                                            <div className="dropdown dropdown-end">
-                                                <label tabIndex={0} className="p-1.5 hover:bg-gray-100 dark:hover:bg-base-200 rounded-lg text-gray-500 hover:text-green-500 transition-colors inline-block cursor-pointer">
-                                                    <RefreshCw size={14} />
+                                            <div className="dropdown dropdown-end flex h-7 w-7 items-center justify-center">
+                                                <label tabIndex={0} className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md border border-gray-200 text-gray-450 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:border-base-200 dark:hover:bg-base-200 dark:hover:text-white">
+                                                    <RefreshCw size={12} />
                                                 </label>
-                                                <ul tabIndex={0} className="dropdown-content z-[10] menu p-2 shadow-xl bg-white dark:bg-base-100 rounded-xl w-32 border border-gray-100 dark:border-base-200 mt-1">
-                                                    <div className="px-3 py-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t('user_token.renew')}</div>
-                                                    <li><a className="text-xs py-2" onClick={() => handleRenew(token.id, 'day')}>{t('user_token.expires_day', { defaultValue: '1 Day' })}</a></li>
-                                                    <li><a className="text-xs py-2" onClick={() => handleRenew(token.id, 'week')}>{t('user_token.expires_week', { defaultValue: '1 Week' })}</a></li>
-                                                    <li><a className="text-xs py-2" onClick={() => handleRenew(token.id, 'month')}>{t('user_token.expires_month', { defaultValue: '1 Month' })}</a></li>
+                                                <ul tabIndex={0} className="dropdown-content z-[10] menu p-1 shadow-md bg-white dark:bg-base-100 rounded border border-gray-200 dark:border-base-200 w-32 mt-1">
+                                                    <div className="px-2 py-1 text-[9px] font-bold text-gray-400 uppercase tracking-widest">{t('user_token.renew')}</div>
+                                                    <li><a className="text-xs py-1.5 font-semibold" onClick={() => handleRenew(token.id, 'day')}>{t('user_token.expires_day', { defaultValue: '1 Day' })}</a></li>
+                                                    <li><a className="text-xs py-1.5 font-semibold" onClick={() => handleRenew(token.id, 'week')}>{t('user_token.expires_week', { defaultValue: '1 Week' })}</a></li>
+                                                    <li><a className="text-xs py-1.5 font-semibold" onClick={() => handleRenew(token.id, 'month')}>{t('user_token.expires_month', { defaultValue: '1 Month' })}</a></li>
                                                 </ul>
                                             </div>
                                             <button
                                                 onClick={() => handleDelete(token.id)}
-                                                className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg text-gray-400 hover:text-red-500 transition-colors"
+                                                className="flex h-7 w-7 items-center justify-center rounded-md border border-gray-200 text-gray-450 transition-colors hover:bg-gray-50 hover:text-red-600 dark:border-base-200 dark:hover:bg-base-200"
                                             >
-                                                <Trash2 size={14} />
+                                                <Trash2 size={12} />
                                             </button>
                                         </div>
                                     </td>
@@ -436,14 +403,11 @@ const UserToken: React.FC = () => {
                         {tokens.length === 0 && !loading && (
                             <tr>
                                 <td colSpan={7} className="py-20">
-                                    <div className="flex flex-col items-center justify-center text-gray-400 gap-3">
-                                        <div className="p-4 bg-gray-50 dark:bg-base-200 rounded-full">
-                                            <Users size={40} className="opacity-20" />
-                                        </div>
-                                        <p className="text-sm">{t('user_token.no_data', { defaultValue: 'No tokens found' })}</p>
+                                    <div className="flex flex-col items-center justify-center text-gray-400 gap-2">
+                                        <p className="text-xs font-semibold">{t('user_token.no_data', { defaultValue: 'No tokens found' })}</p>
                                         <button
                                             onClick={() => setShowCreateModal(true)}
-                                            className="text-xs text-blue-500 hover:underline"
+                                            className="text-[10px] text-zinc-950 dark:text-zinc-200 font-semibold uppercase tracking-wider hover:underline"
                                         >
                                             {t('user_token.create', { defaultValue: 'Create your first token' })}
                                         </button>
@@ -458,42 +422,40 @@ const UserToken: React.FC = () => {
             {/* Create Modal */}
             {showCreateModal && (
                 <div className="modal modal-open">
-                    <div className="modal-box">
-                        <h3 className="font-bold text-lg mb-4">{t('user_token.create_title', { defaultValue: 'Create New Token' })}</h3>
+                    <div className="modal-box max-w-xl rounded-2xl border border-gray-200 bg-white p-0 shadow-2xl dark:border-base-200 dark:bg-base-100">
+                        <div className="border-b border-gray-100 px-6 py-5 dark:border-base-200">
+                            <h3 className="text-lg font-black tracking-tight text-gray-950 dark:text-base-content">{t('user_token.create_title', { defaultValue: 'Create New Token' })}</h3>
+                            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Configure identity, expiry, and access limits for this token.</p>
+                        </div>
 
-                        <div className="form-control w-full mb-3">
-                            <label className="label">
-                                <span className="label-text">{t('user_token.username', { defaultValue: 'Username' })} *</span>
-                            </label>
+                        <div className="space-y-4 px-6 py-5">
+                        <div className="space-y-1.5">
+                            <label className={modalLabelClass}>{t('user_token.username', { defaultValue: 'Username' })} *</label>
                             <input
                                 type="text"
-                                className="input input-bordered w-full"
+                                className={modalInputClass}
                                 value={newUsername}
                                 onChange={e => setNewUsername(e.target.value)}
                                 placeholder={t('user_token.placeholder_username', { defaultValue: 'e.g. user1' })}
                             />
                         </div>
 
-                        <div className="form-control w-full mb-3">
-                            <label className="label">
-                                <span className="label-text">{t('user_token.description', { defaultValue: 'Description' })}</span>
-                            </label>
+                        <div className="space-y-1.5">
+                            <label className={modalLabelClass}>{t('user_token.description', { defaultValue: 'Description' })}</label>
                             <input
                                 type="text"
-                                className="input input-bordered w-full"
+                                className={modalInputClass}
                                 value={newDesc}
                                 onChange={e => setNewDesc(e.target.value)}
                                 placeholder={t('user_token.placeholder_desc', { defaultValue: 'Optional notes' })}
                             />
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4 mb-3">
-                            <div className="form-control w-full">
-                                <label className="label">
-                                    <span className="label-text">{t('user_token.expires', { defaultValue: 'Expires In' })}</span>
-                                </label>
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                            <div className="space-y-1.5">
+                                <label className={modalLabelClass}>{t('user_token.expires', { defaultValue: 'Expires In' })}</label>
                                 <select
-                                    className="select select-bordered w-full"
+                                    className={modalInputClass}
                                     value={newExpiresType}
                                     onChange={e => setNewExpiresType(e.target.value)}
                                 >
@@ -505,73 +467,72 @@ const UserToken: React.FC = () => {
                                 </select>
                             </div>
 
-                            <div className="form-control w-full">
-                                <label className="label">
-                                    <span className="label-text">{t('user_token.ip_limit', { defaultValue: 'Max IPs' })}</span>
-                                </label>
+                            <div className="space-y-1.5">
+                                <label className={modalLabelClass}>{t('user_token.ip_limit', { defaultValue: 'Max IPs' })}</label>
                                 <input
                                     type="number"
-                                    className="input input-bordered w-full"
+                                    className={modalInputClass}
                                     value={newMaxIps}
                                     onChange={e => setNewMaxIps(parseInt(e.target.value) || 0)}
                                     min="0"
                                     placeholder={t('user_token.placeholder_max_ips', { defaultValue: '0 = Unlimited' })}
                                 />
-                                <label className="label">
-                                    <span className="label-text-alt text-gray-500">{t('user_token.hint_max_ips', { defaultValue: '0 = Unlimited' })}</span>
-                                </label>
+                                <p className={modalHintClass}>{t('user_token.hint_max_ips', { defaultValue: '0 = Unlimited. Limits how many different IP addresses can use this token.' })}</p>
                             </div>
                         </div>
 
                         {/* Custom Expiration Time Picker */}
                         {newExpiresType === 'custom' && (
-                            <div className="form-control w-full mb-3">
-                                <label className="label">
-                                    <span className="label-text">{t('user_token.custom_expires_at', { defaultValue: 'Expiration Date & Time' })} *</span>
-                                </label>
+                            <div className="space-y-1.5">
+                                <label className={modalLabelClass}>{t('user_token.custom_expires_at', { defaultValue: 'Expiration Date & Time' })} *</label>
                                 <input
                                     type="datetime-local"
-                                    className="input input-bordered w-full"
+                                    className={modalInputClass}
                                     value={newCustomExpires}
                                     onChange={e => setNewCustomExpires(e.target.value)}
                                     min={new Date().toISOString().slice(0, 16)}
                                 />
-                                <label className="label">
-                                    <span className="label-text-alt text-gray-500">{t('user_token.hint_custom_expires', { defaultValue: 'Select the exact date and hour when this token expires' })}</span>
-                                </label>
+                                <p className={modalHintClass}>{t('user_token.hint_custom_expires', { defaultValue: 'Select the exact date and hour when this token expires' })}</p>
                             </div>
                         )}
 
-                        <div className="form-control w-full mb-3">
-                            <label className="label">
-                                <span className="label-text">{t('user_token.curfew', { defaultValue: 'Curfew (Service Unavailable Time)' })}</span>
-                            </label>
-                            <div className="flex gap-2 items-center">
+                        <div className="space-y-1.5">
+                            <div className="flex items-center justify-between gap-3">
+                                <label className={modalLabelClass}>{t('user_token.curfew', { defaultValue: 'Curfew (Service Unavailable Time)' })}</label>
+                                <select
+                                    className="h-8 rounded-lg border border-gray-200 bg-white px-2 text-[11px] font-bold text-gray-600 outline-none transition-colors focus:border-gray-400 dark:border-base-300 dark:bg-base-100 dark:text-gray-300"
+                                    value={newCurfewTimezone}
+                                    onChange={e => setNewCurfewTimezone(e.target.value)}
+                                    aria-label="Curfew timezone"
+                                >
+                                    {timezoneOptions.map(tz => <option key={tz} value={tz}>{tz}</option>)}
+                                </select>
+                            </div>
+                            <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
                                 <input
                                     type="time"
-                                    className="input input-bordered w-full"
+                                    className={modalInputClass}
                                     value={newCurfewStart}
                                     onChange={e => setNewCurfewStart(e.target.value)}
                                 />
-                                <span className="text-gray-400">to</span>
+                                <span className="text-xs font-bold text-gray-400">to</span>
                                 <input
                                     type="time"
-                                    className="input input-bordered w-full"
+                                    className={modalInputClass}
                                     value={newCurfewEnd}
                                     onChange={e => setNewCurfewEnd(e.target.value)}
                                 />
                             </div>
-                            <label className="label">
-                                <span className="label-text-alt text-gray-500">{t('user_token.hint_curfew', { defaultValue: 'Leave empty to disable. Based on Beijing time (UTC+8).' })}</span>
-                            </label>
+                            <p className={modalHintClass}>{t('user_token.hint_curfew', { defaultValue: 'Leave empty to disable. Time is evaluated using the selected timezone.' })}</p>
+                        </div>
                         </div>
 
-                        <div className="modal-action">
-                            <button className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-base-200 rounded-lg text-sm transition-colors" onClick={() => setShowCreateModal(false)}>
+                        <div className="flex items-center justify-end gap-2 border-t border-gray-100 px-6 py-4 dark:border-base-200">
+                            <button className="rounded-lg px-4 py-2 text-sm font-semibold text-gray-600 transition-colors hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-base-200" onClick={() => setShowCreateModal(false)}>
                                 {t('common.cancel', { defaultValue: 'Cancel' })}
                             </button>
                             <button
-                                className={`px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-all shadow-sm shadow-blue-500/20 flex items-center gap-2 ${creating ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                className={`flex items-center gap-2 rounded-lg bg-gray-950 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-gray-800 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-white ${creating ? 'cursor-not-allowed opacity-50' : ''}`}
                                 onClick={handleCreate}
                                 disabled={creating}
                             >
@@ -586,82 +547,85 @@ const UserToken: React.FC = () => {
             {/* Edit Modal */}
             {showEditModal && editingToken && (
                 <div className="modal modal-open">
-                    <div className="modal-box">
-                        <h3 className="font-bold text-lg mb-4">{t('user_token.edit_title', { defaultValue: 'Edit Token' })}</h3>
+                    <div className="modal-box max-w-xl rounded-2xl border border-gray-200 bg-white p-0 shadow-2xl dark:border-base-200 dark:bg-base-100">
+                        <div className="border-b border-gray-100 px-6 py-5 dark:border-base-200">
+                            <h3 className="text-lg font-black tracking-tight text-gray-950 dark:text-base-content">{t('user_token.edit_title', { defaultValue: 'Edit Token' })}</h3>
+                            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Update token identity and access controls.</p>
+                        </div>
 
-                        <div className="form-control w-full mb-3">
-                            <label className="label">
-                                <span className="label-text">{t('user_token.username', { defaultValue: 'Username' })} *</span>
-                            </label>
+                        <div className="space-y-4 px-6 py-5">
+                        <div className="space-y-1.5">
+                            <label className={modalLabelClass}>{t('user_token.username', { defaultValue: 'Username' })} *</label>
                             <input
                                 type="text"
-                                className="input input-bordered w-full"
+                                className={modalInputClass}
                                 value={editUsername}
                                 onChange={e => setEditUsername(e.target.value)}
                                 placeholder={t('user_token.placeholder_username', { defaultValue: 'e.g. user1' })}
                             />
                         </div>
 
-                        <div className="form-control w-full mb-3">
-                            <label className="label">
-                                <span className="label-text">{t('user_token.description', { defaultValue: 'Description' })}</span>
-                            </label>
+                        <div className="space-y-1.5">
+                            <label className={modalLabelClass}>{t('user_token.description', { defaultValue: 'Description' })}</label>
                             <input
                                 type="text"
-                                className="input input-bordered w-full"
+                                className={modalInputClass}
                                 value={editDesc}
                                 onChange={e => setEditDesc(e.target.value)}
                                 placeholder={t('user_token.placeholder_desc', { defaultValue: 'Optional notes' })}
                             />
                         </div>
 
-                        <div className="form-control w-full mb-3">
-                            <label className="label">
-                                <span className="label-text">{t('user_token.ip_limit', { defaultValue: 'Max IPs' })}</span>
-                            </label>
+                        <div className="space-y-1.5">
+                            <label className={modalLabelClass}>{t('user_token.ip_limit', { defaultValue: 'Max IPs' })}</label>
                             <input
                                 type="number"
-                                className="input input-bordered w-full"
+                                className={modalInputClass}
                                 value={editMaxIps}
                                 onChange={e => setEditMaxIps(parseInt(e.target.value) || 0)}
                                 min="0"
                                 placeholder={t('user_token.placeholder_max_ips', { defaultValue: '0 = Unlimited' })}
                             />
-                            <label className="label">
-                                <span className="label-text-alt text-gray-500">{t('user_token.hint_max_ips', { defaultValue: '0 = Unlimited' })}</span>
-                            </label>
+                            <p className={modalHintClass}>{t('user_token.hint_max_ips', { defaultValue: '0 = Unlimited. Limits how many different IP addresses can use this token.' })}</p>
                         </div>
 
-                        <div className="form-control w-full mb-3">
-                            <label className="label">
-                                <span className="label-text">{t('user_token.curfew', { defaultValue: 'Curfew (Service Unavailable Time)' })}</span>
-                            </label>
-                            <div className="flex gap-2 items-center">
+                        <div className="space-y-1.5">
+                            <div className="flex items-center justify-between gap-3">
+                                <label className={modalLabelClass}>{t('user_token.curfew', { defaultValue: 'Curfew (Service Unavailable Time)' })}</label>
+                                <select
+                                    className="h-8 rounded-lg border border-gray-200 bg-white px-2 text-[11px] font-bold text-gray-600 outline-none transition-colors focus:border-gray-400 dark:border-base-300 dark:bg-base-100 dark:text-gray-300"
+                                    value={editCurfewTimezone}
+                                    onChange={e => setEditCurfewTimezone(e.target.value)}
+                                    aria-label="Curfew timezone"
+                                >
+                                    {timezoneOptions.map(tz => <option key={tz} value={tz}>{tz}</option>)}
+                                </select>
+                            </div>
+                            <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
                                 <input
                                     type="time"
-                                    className="input input-bordered w-full"
+                                    className={modalInputClass}
                                     value={editCurfewStart}
                                     onChange={e => setEditCurfewStart(e.target.value)}
                                 />
-                                <span className="text-gray-400">to</span>
+                                <span className="text-xs font-bold text-gray-400">to</span>
                                 <input
                                     type="time"
-                                    className="input input-bordered w-full"
+                                    className={modalInputClass}
                                     value={editCurfewEnd}
                                     onChange={e => setEditCurfewEnd(e.target.value)}
                                 />
                             </div>
-                            <label className="label">
-                                <span className="label-text-alt text-gray-500">{t('user_token.hint_curfew', { defaultValue: 'Leave empty to disable. Based on Beijing time (UTC+8).' })}</span>
-                            </label>
+                            <p className={modalHintClass}>{t('user_token.hint_curfew', { defaultValue: 'Leave empty to disable. Time is evaluated using the selected timezone.' })}</p>
+                        </div>
                         </div>
 
-                        <div className="modal-action">
-                            <button className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-base-200 rounded-lg text-sm transition-colors" onClick={() => setShowEditModal(false)}>
+                        <div className="flex items-center justify-end gap-2 border-t border-gray-100 px-6 py-4 dark:border-base-200">
+                            <button className="rounded-lg px-4 py-2 text-sm font-semibold text-gray-600 transition-colors hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-base-200" onClick={() => setShowEditModal(false)}>
                                 {t('common.cancel', { defaultValue: 'Cancel' })}
                             </button>
                             <button
-                                className={`px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-all shadow-sm shadow-blue-500/20 flex items-center gap-2 ${updating ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                className={`flex items-center gap-2 rounded-lg bg-gray-950 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-gray-800 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-white ${updating ? 'cursor-not-allowed opacity-50' : ''}`}
                                 onClick={handleUpdate}
                                 disabled={updating}
                             >
@@ -672,7 +636,7 @@ const UserToken: React.FC = () => {
                     </div>
                 </div>
             )}
-        </motion.div>
+        </div>
     );
 };
 export default UserToken;

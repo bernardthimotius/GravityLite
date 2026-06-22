@@ -84,9 +84,15 @@ impl ProxyMonitor {
         {
             let model = log.model.clone().unwrap_or_else(|| "unknown".to_string());
             let account = account.clone();
+            let username = log.username.clone();
             tokio::spawn(async move {
-                if let Err(e) =
-                    crate::modules::token_stats::record_usage(&account, &model, input, output)
+                if let Err(e) = crate::modules::token_stats::record_usage(
+                    &account,
+                    &model,
+                    input,
+                    output,
+                    username.as_deref(),
+                )
                 {
                     tracing::debug!("Failed to record token stats: {}", e);
                 }
@@ -156,9 +162,13 @@ impl ProxyMonitor {
                     .model
                     .clone()
                     .unwrap_or_else(|| "unknown".to_string());
-                if let Err(e) =
-                    crate::modules::token_stats::record_usage(account, &model, input, output)
-                {
+                if let Err(e) = crate::modules::token_stats::record_usage(
+                    account,
+                    &model,
+                    input,
+                    output,
+                    log_to_save.username.as_deref(),
+                ) {
                     tracing::debug!("Failed to record token stats: {}", e);
                 }
             }

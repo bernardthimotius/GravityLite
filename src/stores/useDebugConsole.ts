@@ -130,15 +130,13 @@ export const useDebugConsole = create<DebugConsoleState>((set, get) => ({
     },
 
     clearLogs: async () => {
-        console.log('[DebugConsole] Clearing logs...');
-        set({ logs: [] }); // Clear immediately in frontend
+        set({ logs: [] });
         try {
             if (isTauri()) {
                 await invoke('clear_debug_console_logs');
             } else {
                 await request('clear_debug_console_logs');
             }
-            console.log('[DebugConsole] Backend log buffer cleared');
         } catch (error) {
             console.error('[DebugConsole] Failed to clear background logs:', error);
         }

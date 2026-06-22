@@ -54,68 +54,127 @@ const LogTable: React.FC<LogTableProps> = ({
     onLogClick,
     t
 }) => {
+    const getProtocolLabel = (protocol?: string) => {
+        if (protocol === 'openai') return 'OpenAI';
+        if (protocol === 'anthropic') return 'Claude';
+        if (protocol === 'gemini') return 'Gemini';
+        return protocol || '-';
+    };
+
+    const maskEmail = (email?: string) => email ? email.replace(/(.{3}).*(@.*)/, '$1***$2') : '-';
+
+    const getStatusMeta = (status: number) => {
+        if (status >= 200 && status < 400) {
+            return {
+                label: 'OK',
+                className: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300'
+            };
+        }
+
+        if (status === 429) {
+            return {
+                label: 'Limit',
+                className: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300'
+            };
+        }
+
+        return {
+            label: 'Error',
+            className: 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-300'
+        };
+    };
+
+    const getDetailSummary = (log: ProxyRequestLog) => {
+        if (!log.error) return log.url || '-';
+
+        let detail = log.error;
+        try {
+            const parsed = JSON.parse(detail);
+            detail = parsed?.error?.message || parsed?.message || detail;
+        } catch {
+            // Error details may be plain text from retry/network failures.
+        }
+
+        detail = detail
+            .replace(/\\n/g, ' ')
+            .replace(/\s+/g, ' ')
+            .replace(/\{\s*"error"\s*:\s*\{.*?"message"\s*:\s*"/i, '')
+            .replace(/"\s*,\s*"status".*$/i, '')
+            .trim();
+
+        if (detail.includes('GenerateContentRequest.safety_settings')) {
+            return 'Invalid safety settings sent upstream';
+        }
+
+        if (detail.includes('Request contains an invalid argument')) {
+            return 'Invalid argument rejected by upstream';
+        }
+
+        if (detail.includes('All accounts exhausted')) {
+            return 'All accounts exhausted';
+        }
+
+        if (detail.includes('Max retries exhausted')) {
+            return 'Network retries exhausted';
+        }
+
+        return detail || 'Upstream error';
+    };
+
     return (
-        <div
-            className="flex-1 overflow-y-auto overflow-x-auto bg-white dark:bg-base-100"
-        >
-            <table className="table table-xs w-full">
-                <thead className="bg-gray-50 dark:bg-base-200 text-gray-500 sticky top-0 z-10">
+        <div className="flex-1 overflow-y-auto overflow-x-auto bg-white dark:bg-base-100">
+            <table className="table table-sm table-fixed w-full">
+                <thead className="sticky top-0 z-10 border-b border-gray-100 bg-white/95 text-[10px] uppercase tracking-[0.18em] text-gray-400 backdrop-blur dark:border-base-200 dark:bg-base-100/95">
                     <tr>
-                        <th style={{ width: '60px' }}>{t('monitor.table.status')}</th>
-                        <th style={{ width: '60px' }}>{t('monitor.table.method')}</th>
-                        <th style={{ width: '220px' }}>{t('monitor.table.model')}</th>
-                        <th style={{ width: '70px' }}>{t('monitor.table.protocol')}</th>
-                        <th style={{ width: '140px' }}>{t('monitor.table.account')}</th>
-                        <th style={{ width: '180px' }}>{t('monitor.table.path')}</th>
-                        <th className="text-right" style={{ width: '90px' }}>{t('monitor.table.usage')}</th>
-                        <th className="text-right" style={{ width: '80px' }}>{t('monitor.table.duration')}</th>
-                        <th className="text-right" style={{ width: '80px' }}>{t('monitor.table.time')}</th>
+                        <th style={{ width: '120px' }}>{t('monitor.table.status')}</th>
+                        <th>{t('monitor.table.request')}</th>
+                        <th className="text-right" style={{ width: '130px' }}>{t('monitor.table.usage')}</th>
+                        <th className="text-right" style={{ width: '160px' }}>{t('monitor.table.time')}</th>
                     </tr>
                 </thead>
                 <tbody className="font-mono text-gray-700 dark:text-gray-300">
-                    {logs.map((log) => (
-                        <tr
-                            key={log.id}
-                            className="hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer"
-                            onClick={() => onLogClick(log)}
-                        >
-                            <td style={{ width: '60px' }}>
-                                <span className={`badge badge-xs text-white border-none ${log.status >= 200 && log.status < 400 ? 'badge-success' : 'badge-error'}`}>
-                                    {log.status}
-                                </span>
-                            </td>
-                            <td className="font-bold" style={{ width: '60px' }}>{log.method}</td>
-                            <td className="text-blue-600 truncate" style={{ width: '220px', maxWidth: '220px' }}>
-                                {log.mapped_model && log.model !== log.mapped_model
-                                    ? `${log.model} => ${log.mapped_model}`
-                                    : (log.model || '-')}
-                            </td>
-                            <td style={{ width: '70px' }}>
-                                {log.protocol && (
-                                    <span className={`badge badge-xs text-white border-none ${log.protocol === 'openai' ? 'bg-green-500' :
-                                        log.protocol === 'anthropic' ? 'bg-orange-500' :
-                                            log.protocol === 'gemini' ? 'bg-blue-500' : 'bg-gray-400'
-                                        }`}>
-                                        {log.protocol === 'openai' ? 'OpenAI' :
-                                            log.protocol === 'anthropic' ? 'Claude' :
-                                                log.protocol === 'gemini' ? 'Gemini' : log.protocol}
+                    {logs.map((log) => {
+                        const statusMeta = getStatusMeta(log.status);
+                        const modelLabel = log.mapped_model && log.model !== log.mapped_model
+                            ? `${log.model || '-'} -> ${log.mapped_model}`
+                            : (log.model || '-');
+
+                        return (
+                            <tr
+                                key={log.id}
+                                className="cursor-pointer border-b border-gray-50 transition-colors hover:bg-gray-50/80 dark:border-base-200/60 dark:hover:bg-base-200/40"
+                                onClick={() => onLogClick(log)}
+                            >
+                                <td style={{ width: '120px' }}>
+                                <div className="flex flex-col gap-1">
+                                    <span className={`w-fit rounded-md border px-2 py-0.5 text-[10px] font-black ${statusMeta.className}`}>
+                                        {log.status} {statusMeta.label}
                                     </span>
-                                )}
+                                    <span className="text-[10px] font-bold uppercase tracking-wide text-gray-400">{log.method}</span>
+                                </div>
                             </td>
-                            <td className="text-gray-600 dark:text-gray-400 truncate text-[10px]" style={{ width: '140px', maxWidth: '140px' }} title={log.account_email || ''}>
-                                {log.account_email ? log.account_email.replace(/(.{3}).*(@.*)/, '$1***$2') : '-'}
+                            <td className="min-w-[300px]">
+                                <div className="truncate font-bold text-gray-900 dark:text-zinc-100" title={modelLabel}>
+                                    {modelLabel}
+                                </div>
+                                <div className="flex min-w-0 items-center gap-1.5 text-[10px] text-gray-500 dark:text-gray-400">
+                                    <span className="shrink-0 rounded border border-gray-200 px-1.5 py-0.5 font-semibold text-gray-500 dark:border-base-300 dark:text-gray-400">
+                                        {getProtocolLabel(log.protocol)}
+                                    </span>
+                                    <span className="truncate" title={log.error || log.url || '-'}>{getDetailSummary(log)}</span>
+                                </div>
                             </td>
-                            <td className="truncate" style={{ width: '180px', maxWidth: '180px' }}>{log.url}</td>
-                            <td className="text-right text-[9px]" style={{ width: '90px' }}>
-                                {log.input_tokens != null && <div>I: {formatCompactNumber(log.input_tokens)}</div>}
-                                {log.output_tokens != null && <div>O: {formatCompactNumber(log.output_tokens)}</div>}
+                            <td className="text-right text-[10px]" style={{ width: '130px' }}>
+                                <div className="font-semibold text-gray-700 dark:text-gray-300">{formatCompactNumber(log.input_tokens ?? 0)} / {formatCompactNumber(log.output_tokens ?? 0)}</div>
+                                <div className="text-gray-400">{log.duration}ms</div>
                             </td>
-                            <td className="text-right" style={{ width: '80px' }}>{log.duration}ms</td>
-                            <td className="text-right text-[10px]" style={{ width: '80px' }}>
-                                {new Date(log.timestamp).toLocaleTimeString()}
+                            <td className="text-right text-[10px]" style={{ width: '160px' }} title={log.account_email || ''}>
+                                <div className="font-semibold text-gray-700 dark:text-gray-300">{new Date(log.timestamp).toLocaleTimeString()}</div>
+                                <div className="text-gray-400 truncate">{maskEmail(log.account_email)}</div>
                             </td>
-                        </tr>
-                    ))}
+                            </tr>
+                        );
+                    })}
                 </tbody>
             </table>
 
@@ -129,7 +188,7 @@ const LogTable: React.FC<LogTableProps> = ({
 
             {/* Empty state */}
             {!loading && logs.length === 0 && (
-                <div className="flex items-center justify-center p-8 text-gray-400">
+                <div className="flex items-center justify-center p-10 text-xs font-semibold text-gray-400">
                     {t('monitor.table.empty') || '暂无请求记录'}
                 </div>
             )}
@@ -143,13 +202,15 @@ export const ProxyMonitor: React.FC<ProxyMonitorProps> = ({ className }) => {
     const [logs, setLogs] = useState<ProxyRequestLog[]>([]);
     const [stats, setStats] = useState<ProxyStats>({ total_requests: 0, success_count: 0, error_count: 0 });
     const [filter, setFilter] = useState('');
+    const [quickFilter, setQuickFilter] = useState('');
     const [accountFilter, setAccountFilter] = useState('');
     // [FIX] 使用 ref 存储最新的筛选条件，避免 setInterval 闭包问题
     const filterRef = useRef(filter);
     const accountFilterRef = useRef(accountFilter);
+    const quickFilterRef = useRef(quickFilter);
     const currentPageRef = useRef(1);
     const [selectedLog, setSelectedLog] = useState<ProxyRequestLog | null>(null);
-    const [isLoggingEnabled, setIsLoggingEnabled] = useState(false);
+    const [payloadView, setPayloadView] = useState<'request' | 'response'>('request');
     const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
     const [copiedRequestId, setCopiedRequestId] = useState<string | null>(null);
 
@@ -176,7 +237,7 @@ export const ProxyMonitor: React.FC<ProxyMonitorProps> = ({ className }) => {
         return Array.from(emailSet).sort();
     }, [logs, accounts]);
 
-    const loadData = async (page = 1, searchFilter = filter, accountEmailFilter = accountFilter) => {
+    const loadData = async (page = 1, searchFilter = filter, accountEmailFilter = accountFilter, activeQuickFilter = quickFilter) => {
         if (loading) return;
         setLoading(true);
 
@@ -192,12 +253,15 @@ export const ProxyMonitor: React.FC<ProxyMonitorProps> = ({ className }) => {
             ]) as AppConfig;
 
             if (config && config.proxy) {
-                setIsLoggingEnabled(config.proxy.enable_logging);
-                await invoke('set_proxy_monitor_enabled', { enabled: config.proxy.enable_logging });
+                if (!config.proxy.enable_logging) {
+                    config.proxy.enable_logging = true;
+                    await invoke('save_config', { config });
+                }
+                await invoke('set_proxy_monitor_enabled', { enabled: true });
             }
 
-            const errorsOnly = searchFilter === '__ERROR__';
-            const baseFilter = errorsOnly ? '' : searchFilter;
+            const errorsOnly = activeQuickFilter === '__ERROR__';
+            const baseFilter = [searchFilter, errorsOnly ? '' : activeQuickFilter].filter(Boolean).join(' ');
             const actualFilter = accountEmailFilter
                 ? (baseFilter ? `${baseFilter} ${accountEmailFilter}` : accountEmailFilter)
                 : baseFilter;
@@ -256,21 +320,6 @@ export const ProxyMonitor: React.FC<ProxyMonitorProps> = ({ className }) => {
             setCurrentPage(page);
             currentPageRef.current = page; // [FIX] 同步 ref
             loadData(page, filter, accountFilter);
-        }
-    };
-
-    const toggleLogging = async () => {
-        const newState = !isLoggingEnabled;
-        try {
-            const config = await invoke<AppConfig>('load_config');
-            if (config && config.proxy) {
-                config.proxy.enable_logging = newState;
-                await invoke('save_config', { config });
-                await invoke('set_proxy_monitor_enabled', { enabled: newState });
-                setIsLoggingEnabled(newState);
-            }
-        } catch (e) {
-            console.error("Failed to toggle logging", e);
         }
     };
 
@@ -362,7 +411,7 @@ export const ProxyMonitor: React.FC<ProxyMonitorProps> = ({ className }) => {
             pollInterval = window.setInterval(() => {
                 if (isMountedRef.current && !loading) {
                     // [FIX] 使用 ref.current 获取最新的筛选条件
-                    loadData(currentPageRef.current, filterRef.current, accountFilterRef.current);
+                    loadData(currentPageRef.current, filterRef.current, accountFilterRef.current, quickFilterRef.current);
                 }
             }, 10000);
         }
@@ -378,23 +427,25 @@ export const ProxyMonitor: React.FC<ProxyMonitorProps> = ({ className }) => {
 
     useEffect(() => {
         setCopiedRequestId(null);
+        setPayloadView('request');
     }, [selectedLog?.id]);
 
     // Reload when pageSize changes
     useEffect(() => {
         setCurrentPage(1);
-        loadData(1, filter, accountFilter);
+        loadData(1, filter, accountFilter, quickFilter);
     }, [pageSize]);
 
     // Reload when filter changes (search based on all logs)
     useEffect(() => {
         setCurrentPage(1);
-        loadData(1, filter, accountFilter);
+        loadData(1, filter, accountFilter, quickFilter);
         // [FIX] 同步 ref 值，供 setInterval 使用
         filterRef.current = filter;
         accountFilterRef.current = accountFilter;
+        quickFilterRef.current = quickFilter;
         currentPageRef.current = 1;
-    }, [filter, accountFilter]);
+    }, [filter, accountFilter, quickFilter]);
 
     // Logs are already filtered and sorted by backend
     // Apply account filter on frontend
@@ -449,35 +500,46 @@ export const ProxyMonitor: React.FC<ProxyMonitorProps> = ({ className }) => {
 
 
     return (
-        <div className={`flex flex-col bg-white dark:bg-base-100 rounded-xl shadow-sm border border-gray-100 dark:border-base-200 overflow-hidden ${className || 'flex-1'}`}>
-            <div className="p-3 border-b border-gray-100 dark:border-base-200 space-y-3 bg-gray-50/30 dark:bg-base-200/30">
-                <div className="flex items-center gap-4">
-                    <button
-                        onClick={toggleLogging}
-                        className={`btn btn-sm gap-2 px-4 border font-bold ${isLoggingEnabled
-                            ? 'bg-red-500 border-red-600 text-white animate-pulse'
-                            : 'bg-white dark:bg-base-200 border-gray-300 text-gray-600'
-                            }`}
-                    >
-                        <div className={`w-2.5 h-2.5 rounded-full ${isLoggingEnabled ? 'bg-white' : 'bg-gray-400'}`} />
-                        {isLoggingEnabled ? t('monitor.logging_status.active') : t('monitor.logging_status.paused')}
-                    </button>
+        <div className={`flex flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-base-200 dark:bg-base-100 ${className || 'flex-1'}`}>
+            <div className="space-y-4 border-b border-gray-100 bg-gray-50/40 p-4 dark:border-base-200 dark:bg-base-200/20">
+                <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+                    <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2">
+                            <h2 className="text-lg font-black tracking-tight text-gray-950 dark:text-base-content">{t('monitor.page_title')}</h2>
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{t('monitor.page_subtitle')}</p>
+                    </div>
 
+                    <div className="grid grid-cols-3 overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-base-300 dark:bg-base-100">
+                        {[
+                            { value: stats.total_requests, label: t('monitor.stats.total'), tone: 'text-gray-900 dark:text-zinc-100' },
+                            { value: stats.success_count, label: t('monitor.stats.ok'), tone: 'text-emerald-600 dark:text-emerald-300' },
+                            { value: stats.error_count, label: t('monitor.stats.err'), tone: 'text-rose-600 dark:text-rose-300' }
+                        ].map((item, index) => (
+                            <div key={item.label} className={`min-w-[92px] px-3 py-2 ${index > 0 ? 'border-l border-gray-100 dark:border-base-300' : ''}`}>
+                                <div className={`text-sm font-black tabular-nums ${item.tone}`}>{formatCompactNumber(item.value)}</div>
+                                <div className="text-[9px] font-bold uppercase tracking-[0.18em] text-gray-400">{item.label}</div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="flex flex-col lg:flex-row lg:items-center gap-3">
                     <div className="relative flex-1">
                         <Search className="absolute left-2.5 top-2 text-gray-400" size={14} />
                         <input
                             type="text"
                             placeholder={t('monitor.filters.placeholder')}
-                            className="input input-sm input-bordered w-full pl-9 text-xs"
+                            className="h-9 w-full rounded-xl border border-gray-200 bg-white pl-9 pr-3 text-xs font-medium text-gray-900 outline-none transition-colors placeholder:text-gray-400 focus:border-gray-400 dark:border-base-300 dark:bg-base-100 dark:text-base-content"
                             value={filter}
                             onChange={(e) => setFilter(e.target.value)}
                         />
                     </div>
 
                     <div className="relative">
-                        <User className="absolute left-2.5 top-2 text-gray-400 z-10" size={14} />
+                        <User className="absolute left-2.5 top-2.5 text-gray-400 z-10" size={14} />
                         <select
-                            className="select select-sm select-bordered pl-8 text-xs min-w-[140px] max-w-[220px]"
+                            className="h-9 w-full rounded-xl border border-gray-200 bg-white pl-8 pr-8 text-xs font-medium text-gray-700 outline-none transition-colors focus:border-gray-400 dark:border-base-300 dark:bg-base-100 dark:text-base-content lg:min-w-[180px] lg:max-w-[260px]"
                             value={accountFilter}
                             onChange={(e) => setAccountFilter(e.target.value)}
                             title={t('monitor.filters.by_account')}
@@ -491,28 +553,37 @@ export const ProxyMonitor: React.FC<ProxyMonitorProps> = ({ className }) => {
                         </select>
                     </div>
 
-                    <div className="hidden lg:flex gap-4 text-[10px] font-bold uppercase">
-                        <span className="text-blue-500">{formatCompactNumber(stats.total_requests)} {t('monitor.stats.total')}</span>
-                        <span className="text-green-500">{formatCompactNumber(stats.success_count)} {t('monitor.stats.ok')}</span>
-                        <span className="text-red-500">{formatCompactNumber(stats.error_count)} {t('monitor.stats.err')}</span>
-                    </div>
-
-                    <button onClick={() => loadData(currentPage, filter)} className="btn btn-sm btn-ghost text-gray-400" title={t('common.refresh')}>
-                        <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+                    <button onClick={() => loadData(currentPage, filter, accountFilter, quickFilter)} className="flex h-9 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 text-xs font-bold text-gray-600 transition-colors hover:bg-gray-50 dark:border-base-300 dark:bg-base-100 dark:text-gray-300 dark:hover:bg-base-200" title={t('common.refresh')}>
+                        <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
+                        <span className="hidden sm:inline">{t('common.refresh')}</span>
                     </button>
-                    <button onClick={clearLogs} className="btn btn-sm btn-ghost text-gray-400">
-                        <Trash2 size={16} />
+                    <button onClick={clearLogs} className="flex h-9 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 text-xs font-bold text-gray-600 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 dark:border-base-300 dark:bg-base-100 dark:text-gray-300 dark:hover:border-rose-900/60 dark:hover:bg-rose-950/30 dark:hover:text-rose-300">
+                        <Trash2 size={15} />
+                        <span className="hidden sm:inline">{t('common.clear')}</span>
                     </button>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-[10px] font-bold text-gray-400 uppercase">{t('monitor.filters.quick_filters')}</span>
-                    {quickFilters.map(q => (
-                        <button key={q.label} onClick={() => setFilter(q.value)} className={`px-2 py-0.5 rounded-full text-[10px] border ${filter === q.value ? 'bg-blue-500 text-white' : 'bg-white dark:bg-base-200 text-gray-500'}`}>
-                            {q.label}
+                    {quickFilters.map(q => {
+                        const isActive = quickFilter === q.value;
+                        return (
+                            <button
+                                key={q.label}
+                                onClick={() => setQuickFilter(q.value)}
+                                className={`rounded-full border px-3 py-1.5 text-[11px] font-bold transition-colors ${isActive
+                                    ? 'border-gray-900 bg-gray-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-950'
+                                    : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:text-gray-800 dark:border-base-300 dark:bg-base-100 dark:text-gray-400 dark:hover:text-gray-200'
+                                    }`}
+                            >
+                                {q.label}
+                            </button>
+                        );
+                    })}
+                    {(filter || accountFilter || quickFilter) && (
+                        <button onClick={() => { setFilter(''); setQuickFilter(''); setAccountFilter(''); }} className="rounded-full px-2 py-1.5 text-[11px] font-bold text-gray-400 transition-colors hover:text-gray-800 dark:hover:text-gray-200">
+                            {t('monitor.filters.reset')}
                         </button>
-                    ))}
-                    {(filter || accountFilter) && <button onClick={() => { setFilter(''); setAccountFilter(''); }} className="text-[10px] text-blue-500"> {t('monitor.filters.reset')} </button>}
+                    )}
                 </div>
             </div>
 
@@ -535,13 +606,13 @@ export const ProxyMonitor: React.FC<ProxyMonitorProps> = ({ className }) => {
             />
 
             {/* Pagination Controls */}
-            <div className="flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-base-200 border-t border-gray-200 dark:border-base-300 text-xs">
-                <div className="flex items-center gap-2 whitespace-nowrap">
-                    <span className="text-gray-500">{t('common.per_page')}</span>
+            <div className="flex flex-col gap-3 border-t border-gray-100 bg-gray-50/60 px-4 py-3 text-xs dark:border-base-200 dark:bg-base-200/20 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-2 whitespace-nowrap text-gray-500">
+                    <span className="font-bold uppercase tracking-[0.16em] text-[10px]">{t('common.per_page')}</span>
                     <select
                         value={pageSize}
                         onChange={(e) => setPageSize(Number(e.target.value))}
-                        className="select select-xs select-bordered w-16"
+                        className="h-7 rounded-lg border border-gray-200 bg-white px-2 text-[11px] font-bold text-gray-700 outline-none dark:border-base-300 dark:bg-base-100 dark:text-gray-300"
                     >
                         {PAGE_SIZE_OPTIONS.map(size => (
                             <option key={size} value={size}>{size}</option>
@@ -549,27 +620,27 @@ export const ProxyMonitor: React.FC<ProxyMonitorProps> = ({ className }) => {
                     </select>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center justify-between gap-3 sm:justify-center">
                     <button
                         onClick={() => goToPage(currentPage - 1)}
                         disabled={currentPage <= 1 || loading}
-                        className="btn btn-xs btn-ghost"
+                        className="flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-base-300 dark:bg-base-100 dark:hover:bg-base-200"
                     >
                         <ChevronLeft size={14} />
                     </button>
-                    <span className="text-gray-600 dark:text-gray-400 min-w-[80px] text-center">
+                    <span className="min-w-[80px] rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-center font-mono text-[11px] font-bold text-gray-600 dark:border-base-300 dark:bg-base-100 dark:text-gray-400">
                         {currentPage} / {totalPages || 1}
                     </span>
                     <button
                         onClick={() => goToPage(currentPage + 1)}
                         disabled={currentPage >= totalPages || loading}
-                        className="btn btn-xs btn-ghost"
+                        className="flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-base-300 dark:bg-base-100 dark:hover:bg-base-200"
                     >
                         <ChevronRight size={14} />
                     </button>
                 </div>
 
-                <div className="text-gray-500">
+                <div className="text-gray-500 sm:text-right">
                     {t('common.pagination_info', { start: pageStart, end: pageEnd, total: totalCount })}
                 </div>
             </div>
@@ -644,72 +715,84 @@ export const ProxyMonitor: React.FC<ProxyMonitorProps> = ({ className }) => {
                             </div>
 
                             {/* Payloads */}
-                            <div className="space-y-4">
-                                <div>
-                                    <div className="flex items-center justify-between mb-2">
-                                        <h3 className="text-xs font-bold uppercase text-gray-400 flex items-center gap-2">{t('monitor.details.request_payload')}</h3>
+                            <div className="space-y-3">
+                                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                    <div className="tabs tabs-boxed bg-gray-100 dark:bg-base-300 w-fit">
+                                        <button
+                                            type="button"
+                                            className={`tab tab-sm ${payloadView === 'request' ? 'tab-active' : ''}`}
+                                            onClick={() => setPayloadView('request')}
+                                        >
+                                            {t('monitor.details.request_payload')}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className={`tab tab-sm ${payloadView === 'response' ? 'tab-active' : ''}`}
+                                            onClick={() => setPayloadView('response')}
+                                        >
+                                            {t('monitor.details.response_payload')}
+                                        </button>
+                                    </div>
+
+                                    <div className="flex items-center gap-2">
                                         <button
                                             type="button"
                                             className="btn btn-ghost btn-xs gap-1"
                                             onClick={async () => {
-                                                if (!selectedLog.request_body) return;
-                                                const success = await copyToClipboard(getCopyPayload(selectedLog.request_body));
+                                                const body = payloadView === 'request' ? selectedLog.request_body : selectedLog.response_body;
+                                                if (!body) return;
+                                                const copyId = `${selectedLog.id}-${payloadView}`;
+                                                const success = await copyToClipboard(getCopyPayload(body));
                                                 if (success) {
-                                                    setCopiedRequestId(selectedLog.id);
+                                                    setCopiedRequestId(copyId);
                                                     setTimeout(() => {
-                                                        setCopiedRequestId((current) => (current === selectedLog.id ? null : current));
+                                                        setCopiedRequestId((current) => (current === copyId ? null : current));
                                                     }, 2000);
                                                 }
                                             }}
-                                            disabled={!selectedLog.request_body}
-                                            title={copiedRequestId === selectedLog.id ? t('proxy.config.btn_copied') : t('proxy.config.btn_copy')}
+                                            disabled={payloadView === 'request' ? !selectedLog.request_body : !selectedLog.response_body}
+                                            title={copiedRequestId === `${selectedLog.id}-${payloadView}` ? t('proxy.config.btn_copied') : t('proxy.config.btn_copy')}
                                             aria-label={t('proxy.config.btn_copy')}
                                         >
-                                            {copiedRequestId === selectedLog.id ? (
+                                            {copiedRequestId === `${selectedLog.id}-${payloadView}` ? (
                                                 <CheckCircle size={12} className="text-green-500" />
                                             ) : (
                                                 <Copy size={12} />
                                             )}
                                             <span className="text-[10px]">
-                                                {copiedRequestId === selectedLog.id ? t('proxy.config.btn_copied') : t('proxy.config.btn_copy')}
+                                                {copiedRequestId === `${selectedLog.id}-${payloadView}` ? t('proxy.config.btn_copied') : t('proxy.config.btn_copy')}
                                             </span>
                                         </button>
-                                    </div>
-                                    <div className="bg-gray-50 dark:bg-base-300 rounded-lg p-3 border border-gray-100 dark:border-base-300 overflow-hidden">{formatBody(selectedLog.request_body)}</div>
-                                </div>
-                                <div>
-                                    <div className="flex items-center justify-between mb-2">
-                                        <h3 className="text-xs font-bold uppercase text-gray-400 flex items-center gap-2">{t('monitor.details.response_payload')}</h3>
                                         <button
                                             type="button"
                                             className="btn btn-ghost btn-xs gap-1"
                                             onClick={async () => {
-                                                if (!selectedLog.response_body) return;
-                                                const success = await copyToClipboard(getCopyPayload(selectedLog.response_body));
+                                                const success = await copyToClipboard(getCopyPayload(JSON.stringify(selectedLog)));
                                                 if (success) {
-                                                    setCopiedRequestId(selectedLog.id ? `${selectedLog.id}-response` : null);
+                                                    setCopiedRequestId(`${selectedLog.id}-full`);
                                                     setTimeout(() => {
                                                         setCopiedRequestId((current) =>
-                                                            current === `${selectedLog.id}-response` ? null : current
+                                                            current === `${selectedLog.id}-full` ? null : current
                                                         );
                                                     }, 2000);
                                                 }
                                             }}
-                                            disabled={!selectedLog.response_body}
-                                            title={copiedRequestId === `${selectedLog.id}-response` ? t('proxy.config.btn_copied') : t('proxy.config.btn_copy')}
+                                            title={copiedRequestId === `${selectedLog.id}-full` ? t('proxy.config.btn_copied') : t('monitor.details.copy_full_log')}
                                             aria-label={t('proxy.config.btn_copy')}
                                         >
-                                            {copiedRequestId === `${selectedLog.id}-response` ? (
+                                            {copiedRequestId === `${selectedLog.id}-full` ? (
                                                 <CheckCircle size={12} className="text-green-500" />
                                             ) : (
                                                 <Copy size={12} />
                                             )}
                                             <span className="text-[10px]">
-                                                {copiedRequestId === `${selectedLog.id}-response` ? t('proxy.config.btn_copied') : t('proxy.config.btn_copy')}
+                                                {copiedRequestId === `${selectedLog.id}-full` ? t('proxy.config.btn_copied') : t('monitor.details.copy_full_log')}
                                             </span>
                                         </button>
                                     </div>
-                                    <div className="bg-gray-50 dark:bg-base-300 rounded-lg p-3 border border-gray-100 dark:border-base-300 overflow-hidden">{formatBody(selectedLog.response_body)}</div>
+                                </div>
+                                <div className="bg-gray-50 dark:bg-base-300 rounded-lg p-3 border border-gray-100 dark:border-base-300 overflow-hidden">
+                                    {formatBody(payloadView === 'request' ? selectedLog.request_body : selectedLog.response_body)}
                                 </div>
                             </div>
                         </div>

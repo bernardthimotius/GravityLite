@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Antigravity Tools",
-  "version": "4.2.5",
-  "identifier": "com.lbjlaq.antigravity-tools",
+  "productName": "GravityLite",
+  "version": "1.0.0",
+  "identifier": "com.gravitylite.app",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -13,7 +13,7 @@
     "withGlobalTauri": false,
     "windows": [
       {
-        "title": "Antigravity Tools",
+        "title": "GravityLite",
         "width": 1024,
         "height": 700,
         "titleBarStyle": "Overlay",

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { request } from '../../utils/request';
 import { showToast } from '../common/ToastContainer';
-import { Plus, Network, Upload, RefreshCw, Link2, SlidersHorizontal, Trash2, Power } from 'lucide-react';
+import { Trash2, Power } from 'lucide-react';
 import { ProxyPoolConfig, ProxyEntry } from '../../types/config';
 import ProxyList from './proxy/ProxyList';
 import ProxyEditModal from './proxy/ProxyEditModal';
@@ -171,13 +171,10 @@ export default function ProxyPoolSettings({ config, onChange }: ProxyPoolSetting
     return (
         <div className="space-y-3">
             {/* Consolidated Header & Toolbar */}
-            <div className="flex flex-wrap items-center justify-between gap-4 p-1.5 bg-gray-100/30 dark:bg-gray-800/20 border border-gray-200 dark:border-gray-800/70 rounded-2xl">
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white p-3 shadow-sm dark:border-base-200 dark:bg-base-100">
                 {/* Left: Component Identity & Feature Toggle */}
-                <div className="flex items-center gap-2 p-1.5 bg-white dark:bg-gray-900 border border-gray-200/50 dark:border-gray-800 shadow-sm rounded-xl">
-                    <div className="flex items-center gap-3 pr-3 border-r border-gray-100 dark:border-gray-800">
-                        <div className="p-1.5 bg-blue-600 text-white rounded-lg shadow-blue-500/20 shadow-lg">
-                            <Network className="w-3.5 h-3.5" />
-                        </div>
+                <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex items-center gap-3 pr-3 border-r border-gray-100 dark:border-base-200">
                         <h3 className="text-xs font-black text-gray-900 dark:text-white whitespace-nowrap uppercase tracking-wider">
                             {t('settings.proxy_pool.title', 'Proxy Pool')}
                         </h3>
@@ -188,19 +185,19 @@ export default function ProxyPoolSettings({ config, onChange }: ProxyPoolSetting
                                 onChange={e => onChange({ ...safeConfig, enabled: e.target.checked })}
                                 className="sr-only peer"
                             />
-                            <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                            <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-sky-300 dark:peer-checked:bg-sky-400"></div>
                         </label>
                     </div>
 
                     {/* Middle: Configuration Parameters (Strategy & Interval) */}
-                    <div className="flex items-center gap-4 px-2">
+                    <div className="flex flex-wrap items-center gap-2">
 
-                        <div className="flex items-center gap-2 group">
-                            <SlidersHorizontal size={12} className="text-gray-400 group-hover:text-blue-500 transition-colors" />
+                        <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 dark:border-base-200 dark:bg-base-200/30">
+                            <span className="text-[9px] font-black uppercase tracking-[0.18em] text-gray-400">Strategy</span>
                             <select
                                 value={safeConfig.strategy}
                                 onChange={e => onChange({ ...safeConfig, strategy: e.target.value as any })}
-                                className="text-[10px] bg-transparent border-none p-0 pr-6 focus:ring-0 font-black uppercase tracking-tight text-gray-700 dark:text-gray-300 cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                                className="bg-transparent p-0 pr-6 text-[10px] font-black uppercase tracking-tight text-gray-700 outline-none dark:text-gray-300"
                             >
                                 <option value="priority">{t('settings.proxy_pool.strategy_priority', 'Priority')}</option>
                                 <option value="round_robin">{t('settings.proxy_pool.strategy_round_robin', 'Round Robin')}</option>
@@ -209,8 +206,8 @@ export default function ProxyPoolSettings({ config, onChange }: ProxyPoolSetting
                             </select>
                         </div>
 
-                        <div className="flex items-center gap-2 border-l border-gray-100 dark:border-gray-800 pl-4 group">
-                            <RefreshCw size={12} className="text-gray-400 group-hover:text-emerald-500 transition-colors" />
+                        <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 dark:border-base-200 dark:bg-base-200/30">
+                            <span className="text-[9px] font-black uppercase tracking-[0.18em] text-gray-400">Interval</span>
                             <div className="flex items-center gap-1">
                                 <input
                                     type="number"
@@ -221,7 +218,7 @@ export default function ProxyPoolSettings({ config, onChange }: ProxyPoolSetting
                                             onChange({ ...safeConfig, health_check_interval: val });
                                         }
                                     }}
-                                    className="w-10 text-[10px] bg-transparent border-none p-0 focus:ring-0 font-black text-gray-700 dark:text-gray-300 text-right group-hover:text-emerald-600 transition-colors"
+                                    className="w-10 bg-transparent p-0 text-right text-[10px] font-black text-gray-700 outline-none dark:text-gray-300"
                                 />
                                 <span className="text-[9px] text-gray-400 font-black uppercase tracking-tighter">{t('settings.proxy_pool.seconds', 'Sec')}</span>
                             </div>
@@ -232,74 +229,69 @@ export default function ProxyPoolSettings({ config, onChange }: ProxyPoolSetting
                 {/* Right: Actions or Selection Toolbar */}
                 <div className="flex items-center gap-2">
                     {selectedIds.size > 0 ? (
-                        <div className="flex items-center gap-1.5 bg-blue-50/50 dark:bg-blue-900/20 px-2.5 py-1.5 rounded-xl border border-blue-100 dark:border-blue-800/50 animate-in zoom-in-95 duration-200">
-                            <span className="text-[10px] font-black text-blue-700 dark:text-blue-300 mr-2 uppercase tracking-tight">
+                        <div className="flex items-center gap-1.5 rounded-xl border border-gray-200 bg-gray-50 px-2.5 py-1.5 animate-in zoom-in-95 duration-200 dark:border-base-200 dark:bg-base-200/30">
+                            <span className="text-[10px] font-black text-gray-700 dark:text-gray-300 mr-2 uppercase tracking-tight">
                                 {selectedIds.size} {t('common.selected', 'Selected')}
                             </span>
                             <div className="flex items-center gap-1">
                                 <button
                                     onClick={() => handleBatchToggleEnabled(true)}
-                                    className="p-1.5 text-blue-600 hover:bg-white dark:hover:bg-blue-800 rounded-lg transition-all shadow-sm hover:shadow active:scale-90"
+                                    className="p-1.5 text-gray-500 hover:bg-white hover:text-gray-900 dark:hover:bg-base-100 rounded-lg transition-all active:scale-90"
                                     title={t('common.enable', 'Enable')}
                                 >
                                     <Power size={14} />
                                 </button>
                                 <button
                                     onClick={() => handleBatchToggleEnabled(false)}
-                                    className="p-1.5 text-gray-400 hover:bg-white dark:hover:bg-gray-800 rounded-lg transition-all shadow-sm hover:shadow active:scale-90"
+                                    className="p-1.5 text-gray-400 hover:bg-white hover:text-gray-700 dark:hover:bg-base-100 rounded-lg transition-all active:scale-90"
                                     title={t('common.disable', 'Disable')}
                                 >
                                     <Power size={14} className="opacity-50" />
                                 </button>
                                 <button
                                     onClick={handleBatchDelete}
-                                    className="p-1.5 text-rose-500 hover:bg-white dark:hover:bg-rose-900/40 rounded-lg transition-all shadow-sm hover:shadow active:scale-90"
+                                    className="p-1.5 text-rose-500 hover:bg-white dark:hover:bg-base-100 rounded-lg transition-all active:scale-90"
                                     title={t('common.delete', 'Delete')}
                                 >
                                     <Trash2 size={14} />
                                 </button>
                             </div>
-                            <div className="w-px h-4 bg-blue-200 dark:bg-blue-800 mx-1"></div>
+                            <div className="w-px h-4 bg-gray-200 dark:bg-base-300 mx-1"></div>
                             <button
                                 onClick={() => setSelectedIds(new Set())}
-                                className="text-[10px] font-black text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 uppercase px-2 py-1"
+                                className="text-[10px] font-black text-gray-500 hover:text-gray-900 dark:hover:text-gray-200 uppercase px-2 py-1"
                             >
                                 {t('common.cancel', 'Cancel')}
                             </button>
                         </div>
                     ) : (
                         <>
-                            <div className="flex items-center gap-1 p-1 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-100 dark:border-gray-800/50">
+                            <div className="flex items-center gap-2">
                                 <button
                                     onClick={handleTestAll}
                                     disabled={isTesting}
-                                    className={`p-2 text-gray-400 hover:text-emerald-500 hover:bg-white dark:hover:bg-gray-800 rounded-lg transition-all ${isTesting ? 'animate-spin opacity-50' : 'active:scale-90'}`}
+                                    className={`rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-[11px] font-black uppercase tracking-wider text-gray-600 transition-all hover:bg-gray-50 hover:text-gray-900 dark:border-base-200 dark:bg-base-100 dark:text-gray-400 dark:hover:bg-base-200 dark:hover:text-white ${isTesting ? 'opacity-50' : 'active:scale-95'}`}
                                     title={t('settings.proxy_pool.test_all', 'Test All')}
                                 >
-                                    <RefreshCw size={14} />
+                                    {isTesting ? t('common.loading', 'Loading') : t('settings.proxy_pool.test_all', 'Test')}
                                 </button>
                                 <button
                                     onClick={() => setIsBindingManagerOpen(true)}
-                                    className="p-2 text-gray-400 hover:text-indigo-500 hover:bg-white dark:hover:bg-gray-800 rounded-lg transition-all active:scale-90"
+                                    className="rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-[11px] font-black uppercase tracking-wider text-gray-600 transition-all hover:bg-gray-50 hover:text-gray-900 dark:border-base-200 dark:bg-base-100 dark:text-gray-400 dark:hover:bg-base-200 dark:hover:text-white active:scale-95"
                                     title={t('settings.proxy_pool.binding_manager', 'Manage Bindings')}
                                 >
-                                    <Link2 size={14} />
+                                    {t('settings.proxy_pool.binding_manager', 'Bindings')}
                                 </button>
-                            </div>
-
-                            <div className="flex items-center gap-2 ml-1">
                                 <button
                                     onClick={() => setIsBatchImportOpen(true)}
-                                    className="flex items-center gap-1.5 px-3.5 py-2 text-[11px] font-black uppercase tracking-wider text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white bg-gray-50 hover:bg-white dark:bg-gray-800/50 dark:hover:bg-gray-800 border border-gray-100 dark:border-gray-800/50 rounded-xl transition-all shadow-sm hover:shadow active:scale-95"
+                                    className="rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-[11px] font-black uppercase tracking-wider text-gray-600 transition-all hover:bg-gray-50 hover:text-gray-900 dark:border-base-200 dark:bg-base-100 dark:text-gray-400 dark:hover:bg-base-200 dark:hover:text-white active:scale-95"
                                 >
-                                    <Upload size={12} />
                                     {t('settings.proxy_pool.batch_import', 'Import')}
                                 </button>
                                 <button
                                     onClick={() => setIsAddModalOpen(true)}
-                                    className="flex items-center gap-1.5 px-4 py-2 text-[11px] font-black uppercase tracking-wider bg-gray-900 hover:bg-black dark:bg-white dark:hover:bg-gray-100 text-white dark:text-gray-900 rounded-xl transition-all shadow-lg hover:shadow-black/20 dark:hover:shadow-white/10 active:scale-95"
+                                    className="rounded-xl bg-gray-950 px-4 py-2 text-[11px] font-black uppercase tracking-wider text-white transition-all hover:bg-gray-800 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-white active:scale-95"
                                 >
-                                    <Plus size={12} />
                                     {t('settings.proxy_pool.add_proxy', 'Add')}
                                 </button>
                             </div>
@@ -309,10 +301,10 @@ export default function ProxyPoolSettings({ config, onChange }: ProxyPoolSetting
             </div>
 
             {/* Proxy List - Always visible, with status context */}
-            <div className="relative border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden bg-white dark:bg-gray-900 shadow-sm transition-all duration-300">
+            <div className="relative overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition-all duration-300 dark:border-base-200 dark:bg-base-100">
                 {!safeConfig.enabled && (
-                    <div className="absolute inset-x-0 top-0 z-10 bg-amber-50/80 dark:bg-amber-900/10 backdrop-blur-[2px] px-3 py-1 flex items-center justify-center border-b border-amber-100/50 dark:border-amber-900/20">
-                        <span className="text-[10px] font-black text-amber-600/80 dark:text-amber-500/80 uppercase tracking-[0.2em] pointer-events-none">
+                    <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-center border-b border-amber-100 bg-amber-50/80 px-3 py-1 backdrop-blur-[2px] dark:border-amber-900/20 dark:bg-amber-950/20">
+                        <span className="text-[10px] font-black text-amber-600/80 dark:text-amber-400/80 uppercase tracking-[0.2em] pointer-events-none">
                             {t('settings.proxy_pool.inactive_notice', 'Proxy Pool Inactive')}
                         </span>
                     </div>

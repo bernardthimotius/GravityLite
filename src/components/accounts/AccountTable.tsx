@@ -24,7 +24,6 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import {
     GripVertical,
-    ArrowRightLeft,
     RefreshCw,
     Trash2,
     Download,
@@ -43,8 +42,6 @@ import {
     Check,
     Clock,
     Bot,
-    Repeat2,
-    Terminal,
 } from 'lucide-react';
 import { Account } from '../../types/account';
 import { useTranslation } from 'react-i18next';
@@ -52,7 +49,7 @@ import { cn } from '../../utils/cn';
 
 import { useConfigStore } from '../../stores/useConfigStore';
 import { QuotaItem } from './QuotaItem';
-import { MODEL_CONFIG, sortModels } from '../../config/modelConfig';
+import { ACTIVE_PROXY_MODEL_IDS, ACTIVE_PROXY_MODEL_ID_SET, MODEL_CONFIG } from '../../config/modelConfig';
 import { getValidationBlockedStatusLabel } from './accountValidationStatus';
 
 // ============================================================================
@@ -67,7 +64,6 @@ interface AccountTableProps {
     onToggleAll: () => void;
     currentAccountId: string | null;
     switchingAccountId: string | null;
-    onSwitch: (accountId: string, targetIde?: string) => void;
     onRefresh: (accountId: string) => void;
     onViewDevice: (accountId: string) => void;
     onViewDetails: (accountId: string) => void;
@@ -89,7 +85,6 @@ interface SortableRowProps {
     isSwitching: boolean;
     isDragging?: boolean;
     onSelect: () => void;
-    onSwitch: (targetIde?: string) => void;
     onRefresh: () => void;
     onViewDevice: () => void;
     onViewDetails: () => void;
@@ -107,7 +102,6 @@ interface AccountRowContentProps {
     isRefreshing: boolean;
     isSwitching: boolean;
     isDisabled: boolean;
-    onSwitch: (targetIde?: string) => void;
     onRefresh: () => void;
     onViewDevice: () => void;
     onViewDetails: () => void;
@@ -209,7 +203,6 @@ function SortableAccountRow({
     isSwitching,
     isDragging,
     onSelect,
-    onSwitch,
     onRefresh,
     onViewDevice,
     onViewDetails,
@@ -275,7 +268,6 @@ function SortableAccountRow({
                 isRefreshing={isRefreshing}
                 isSwitching={isSwitching}
                 isDisabled={Boolean(account.disabled)}
-                onSwitch={onSwitch}
                 onRefresh={onRefresh}
                 onViewDevice={onViewDevice}
                 onViewDetails={onViewDetails}
@@ -298,9 +290,7 @@ function AccountRowContent({
     account,
     isCurrent,
     isRefreshing,
-    isSwitching,
     isDisabled,
-    onSwitch,
     onRefresh,
     onViewDevice,
     onViewDetails,
@@ -342,57 +332,24 @@ function AccountRowContent({
     // 使用统一的模型配置
 
     // 获取要显示的模型列表
-    const pinnedModels = config?.pinned_quota_models?.models || Object.keys(MODEL_CONFIG);
+    const pinnedModels = (config?.pinned_quota_models?.models || ACTIVE_PROXY_MODEL_IDS)
+        .filter(modelId => ACTIVE_PROXY_MODEL_ID_SET.has(modelId));
 
     // 根据 show_all 状态决定显示哪些模型
-    const uniqueLabels = new Set<string>();
-    const displayModels = sortModels(
-        (showAllQuotas
-            ? (account.quota?.models || []).map(m => {
-                const config = MODEL_CONFIG[m.name.toLowerCase()];
-                const label = m.display_name || (config?.i18nKey ? t(config.i18nKey) : (config?.shortLabel || config?.label || m.name));
-                return {
-                    id: m.name.toLowerCase(),
-                    label: label,
-                    protectedKey: config?.protectedKey || m.name.toLowerCase(),
-                    data: m
-                };
-            })
-            : pinnedModels.map(modelId => {
-                const m = account.quota?.models.find(m => m.name === modelId || getModelAliases(modelId).includes(m.name.toLowerCase()));
-                const config = MODEL_CONFIG[modelId];
-                if (!config && !m) return null; // Safe guard for unknown models that aren't fetched
-                const label = m?.display_name || (config?.i18nKey ? t(config.i18nKey) : (config?.shortLabel || config?.label || modelId));
-                return {
-                    id: modelId,
-                    label: label,
-                    protectedKey: config?.protectedKey || modelId,
-                    data: m
-                };
-            }).filter(Boolean) as any[]
-        ).filter(m => {
-            // 过滤特定的 Claude/Gemini 思考变体 (在列表页隐藏)
-            const isHiddenThinking = m.id.includes('thinking');
-
-            if (isHiddenThinking) return false;
-
-            // 基于标签去重 (例如 G3.1 Pro 只显示一次)
-            // 优先显示有配额数据的 ID
-            const labelKey = `${m.label}-${m.protectedKey}`;
-            if (uniqueLabels.has(labelKey)) {
-                return false;
-            }
-            if (m.data) {
-                uniqueLabels.add(labelKey);
-                return true;
-            }
-            return true;
-        })
-    ).filter((m, index, self) => {
-        // 第二次过滤：确保即使没有数据的重复 Label 也只保留一个
-        const labelKey = `${m.label}-${m.protectedKey}`;
-        return self.findIndex(t => `${t.label}-${t.protectedKey}` === labelKey) === index;
-    });
+    const displayModelIds = showAllQuotas ? ACTIVE_PROXY_MODEL_IDS : pinnedModels;
+    const displayModels = displayModelIds
+        .filter(modelId => modelId.toLowerCase() in MODEL_CONFIG)
+        .map(modelId => {
+            const id = modelId.toLowerCase();
+            const m = account.quota?.models.find(m => m.name === modelId || getModelAliases(id).includes(m.name.toLowerCase()));
+            const config = MODEL_CONFIG[id];
+            return {
+                id,
+                label: config?.label || modelId,
+                protectedKey: config?.protectedKey || id,
+                data: m
+            };
+        });
 
 
     return (
@@ -409,13 +366,13 @@ function AccountRowContent({
 
                     <div className="flex items-center gap-1.5 shrink-0">
                         {isCurrent && (
-                            <span className="px-2 py-0.5 rounded-md bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 text-[10px] font-bold shadow-sm border border-blue-200/50 dark:border-blue-800/50">
+                            <span className="px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[10px] font-bold border border-blue-500/20">
                                 {t('accounts.current').toUpperCase()}
                             </span>
                         )}
                         {isDisabled && (
                             <span
-                                className="px-2 py-0.5 rounded-md bg-rose-100 dark:bg-rose-900/50 text-rose-700 dark:text-rose-300 text-[10px] font-bold flex items-center gap-1 shadow-sm border border-rose-200/50"
+                                className="px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-600 dark:text-rose-400 text-[10px] font-bold flex items-center gap-1 border border-rose-500/20"
                             >
                                 <Ban className="w-2.5 h-2.5" />
                                 <span>{t('accounts.disabled')}</span>
@@ -424,7 +381,7 @@ function AccountRowContent({
 
                         {account.proxy_disabled && (
                             <span
-                                className="px-2 py-0.5 rounded-md bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300 text-[10px] font-bold flex items-center gap-1 shadow-sm border border-orange-200/50"
+                                className="px-2 py-0.5 rounded-md bg-orange-500/10 text-orange-600 dark:text-orange-400 text-[10px] font-bold flex items-center gap-1 border border-orange-500/20"
                             >
                                 <Ban className="w-2.5 h-2.5" />
                                 <span>{t('accounts.proxy_disabled')}</span>
@@ -432,39 +389,37 @@ function AccountRowContent({
                         )}
 
                         {account.quota?.is_forbidden && (
-                            <span className="px-2 py-0.5 rounded-md bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 text-[10px] font-bold flex items-center gap-1 shadow-sm border border-red-200/50">
+                            <span className="px-2 py-0.5 rounded-md bg-red-500/10 text-red-650 dark:text-red-400 text-[10px] font-bold flex items-center gap-1 border border-red-500/20">
                                 <Lock className="w-2.5 h-2.5" />
                                 <span>{t('accounts.forbidden')}</span>
                             </span>
                         )}
                         {account.validation_blocked && (
-                            <span className="px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-400 text-[10px] font-bold flex items-center gap-1 shadow-sm border border-amber-200/50">
+                            <span className="px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-650 dark:text-amber-400 text-[10px] font-bold flex items-center gap-1 border border-amber-500/20">
                                 <Clock className="w-2.5 h-2.5" />
                                 <span>{validationBlockedLabel}</span>
                             </span>
                         )}
 
-
-                        {/* 订阅类型徽章 */}
                         {account.quota?.subscription_tier && (() => {
                             const tier = account.quota.subscription_tier.toLowerCase();
                             if (tier.includes('ultra')) {
                                 return (
-                                    <span className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-gradient-to-r from-purple-600 to-pink-600 text-white text-[10px] font-bold shadow-sm hover:scale-105 transition-transform cursor-default">
+                                    <span className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-sky-500/10 text-sky-600 dark:text-sky-400 text-[10px] font-bold border border-sky-500/20">
                                         <Gem className="w-2.5 h-2.5 fill-current" />
                                         {t('accounts.ultra')}
                                     </span>
                                 );
                             } else if (tier.includes('pro')) {
                                 return (
-                                    <span className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-[10px] font-bold shadow-sm hover:scale-105 transition-transform cursor-default">
+                                    <span className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[10px] font-bold border border-blue-500/20">
                                         <Diamond className="w-2.5 h-2.5 fill-current" />
                                         {t('accounts.pro')}
                                     </span>
                                 );
                             } else {
                                 return (
-                                    <span className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-400 text-[10px] font-bold shadow-sm border border-gray-200 dark:border-white/10 hover:bg-gray-200 transition-colors cursor-default">
+                                    <span className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-gray-500/10 text-gray-500 dark:text-zinc-400 text-[10px] font-bold border border-gray-500/20">
                                         <Circle className="w-2.5 h-2.5" />
                                         {t('accounts.free')}
                                     </span>
@@ -473,7 +428,7 @@ function AccountRowContent({
                         })()}
                         {/* 自定义标签 */}
                         {account.custom_label && !isEditingLabel && (
-                            <span className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300 text-[10px] font-bold shadow-sm border border-orange-200/50 dark:border-orange-800/50">
+                            <span className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-orange-500/10 text-orange-600 dark:text-orange-400 text-[10px] font-bold border border-orange-500/20">
                                 <Tag className="w-2.5 h-2.5" />
                                 {account.custom_label}
                             </span>
@@ -542,24 +497,25 @@ function AccountRowContent({
                         </button>
                     </div>
                 ) : (
-                    <div className={cn(
-                        "grid gap-x-2 gap-y-1 py-0",
-                        displayModels.length === 1 ? "grid-cols-1" : "grid-cols-2"
-                    )}>
-                        {displayModels.map((model) => {
-                            const modelData = model.data;
+                    <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 py-1 min-w-[520px] max-w-[620px]">
+                        {[displayModels.slice(0, 8), displayModels.slice(8)].map((column, columnIndex) => (
+                            <div key={columnIndex} className="space-y-1.5 min-w-0">
+                                {column.map((model) => {
+                                    const modelData = model.data;
 
-                            return (
-                                <QuotaItem
-                                    key={model.id}
-                                    label={model.label}
-                                    percentage={modelData?.percentage || 0}
-                                    resetTime={modelData?.reset_time}
-                                    isProtected={isModelProtected(account.protected_models, model.protectedKey)}
-                                    Icon={MODEL_CONFIG[model.id]?.Icon || Bot}
-                                />
-                            );
-                        })}
+                                    return (
+                                        <QuotaItem
+                                            key={model.id}
+                                            label={model.label}
+                                            percentage={modelData?.percentage || 0}
+                                            resetTime={modelData?.reset_time}
+                                            isProtected={isModelProtected(account.protected_models, model.protectedKey)}
+                                            Icon={MODEL_CONFIG[model.id]?.Icon || Bot}
+                                        />
+                                    );
+                                })}
+                            </div>
+                        ))}
                     </div>
                 )}
             </td>
@@ -585,7 +541,7 @@ function AccountRowContent({
                     : "bg-white dark:bg-base-100",
                 !isCurrent && "group-hover:bg-gray-50 dark:group-hover:bg-base-200"
             )}>
-                <div className="flex flex-wrap items-center justify-center gap-1 opacity-60 group-hover:opacity-100 transition-opacity max-w-[220px] mx-auto">
+                <div className="grid grid-cols-2 gap-1 opacity-60 group-hover:opacity-100 transition-opacity w-[58px] mx-auto place-items-center">
                     <button
                         className="p-1.5 text-gray-500 dark:text-gray-400 hover:text-sky-600 dark:hover:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-900/30 rounded-lg transition-all"
                         onClick={(e) => { e.stopPropagation(); onViewDetails(); }}
@@ -615,30 +571,6 @@ function AccountRowContent({
                             <Tag className="w-3.5 h-3.5" />
                         </button>
                     )}
-                    <button
-                        className={`p-1.5 text-gray-500 dark:text-gray-400 rounded-lg transition-all ${(isSwitching || isDisabled) ? 'bg-blue-50 dark:bg-blue-900/10 text-blue-600 dark:text-blue-400 cursor-not-allowed' : 'hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30'}`}
-                        onClick={(e) => { e.stopPropagation(); onSwitch(); }}
-                        title={isDisabled ? t('accounts.disabled_tooltip') : (isSwitching ? t('common.loading') : t('accounts.switch_to_classic', '切换到 Antigravity (经典版)'))}
-                        disabled={isSwitching || isDisabled}
-                    >
-                        <ArrowRightLeft className={`w-3.5 h-3.5 ${isSwitching ? 'animate-spin' : ''}`} />
-                    </button>
-                    <button
-                        className={`p-1.5 text-gray-500 dark:text-gray-400 rounded-lg transition-all ${(isSwitching || isDisabled) ? 'bg-blue-50 dark:bg-blue-900/10 text-blue-600 dark:text-blue-400 cursor-not-allowed' : 'hover:text-sky-600 dark:hover:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-900/30'}`}
-                        onClick={(e) => { e.stopPropagation(); onSwitch('ide'); }}
-                        title={isDisabled ? t('accounts.disabled_tooltip') : (isSwitching ? t('common.loading') : t('accounts.switch_to_ide', '切换到 Antigravity IDE'))}
-                        disabled={isSwitching || isDisabled}
-                    >
-                        <Repeat2 className={`w-3.5 h-3.5 ${isSwitching ? 'animate-spin' : ''}`} />
-                    </button>
-                    <button
-                        className={`p-1.5 text-gray-500 dark:text-gray-400 rounded-lg transition-all ${(isSwitching || isDisabled) ? 'bg-blue-50 dark:bg-blue-900/10 text-blue-600 dark:text-blue-400 cursor-not-allowed' : 'hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/30'}`}
-                        onClick={(e) => { e.stopPropagation(); onSwitch('agy'); }}
-                        title={isDisabled ? t('accounts.disabled_tooltip') : (isSwitching ? t('common.loading') : t('accounts.switch_to_agy', '切换到 Antigravity CLI (agy)'))}
-                        disabled={isSwitching || isDisabled}
-                    >
-                        <Terminal className={`w-3.5 h-3.5 ${isSwitching ? 'animate-spin' : ''}`} />
-                    </button>
                     {onWarmup && (
                         <button
                             className={`p-1.5 text-gray-500 dark:text-gray-400 rounded-lg transition-all ${(isRefreshing || isDisabled) ? 'bg-orange-50 dark:bg-orange-900/10 text-orange-600 dark:text-orange-400 cursor-not-allowed' : 'hover:text-orange-500 dark:hover:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/30'}`}
@@ -709,7 +641,6 @@ function AccountTable({
     onToggleAll,
     currentAccountId,
     switchingAccountId,
-    onSwitch,
     onRefresh,
     onViewDevice,
     onViewDetails,
@@ -808,7 +739,6 @@ function AccountTable({
                                     isSwitching={account.id === switchingAccountId}
                                     isDragging={account.id === activeId}
                                     onSelect={() => onToggleSelect(account.id)}
-                                    onSwitch={(targetIde?: string) => onSwitch(account.id, targetIde)}
                                     onRefresh={() => onRefresh(account.id)}
                                     onViewDevice={() => onViewDevice(account.id)}
                                     onViewDetails={() => onViewDetails(account.id)}
@@ -850,7 +780,6 @@ function AccountTable({
                                         isCurrent={activeAccount.id === currentAccountId}
                                         isRefreshing={refreshingIds.has(activeAccount.id)}
                                         isSwitching={activeAccount.id === switchingAccountId}
-                                        onSwitch={() => { }}
                                         onRefresh={() => { }}
                                         onViewDevice={() => { }}
                                         onViewDetails={() => { }}

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Lock, Key, Globe, AlertCircle, Loader2 } from 'lucide-react';
+import { Globe, AlertCircle, Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { isTauri } from '../../utils/env';
+import logoLight from '../../assets/logo-light.webp';
 
 /**
  * AdminAuthGuard
@@ -118,25 +119,25 @@ export const AdminAuthGuard: React.FC<{ children: React.ReactNode }> = ({ childr
     }
 
     return (
-        <div className="min-h-screen bg-slate-50 dark:bg-base-300 flex items-center justify-center p-4 relative">
+        <div className="min-h-screen bg-[#f7f8fa] dark:bg-base-300 flex items-center justify-center p-4 relative">
             {/* 语言切换按钮 */}
-            <div className="absolute top-8 right-8">
+            <div className="absolute top-6 right-6 sm:top-8 sm:right-8">
                 <div className="relative">
                     <button
                         onClick={() => setShowLangMenu(!showLangMenu)}
-                        className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-base-100 rounded-2xl shadow-sm border border-slate-100 dark:border-white/5 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 transition-all"
+                        className="flex items-center gap-2 rounded-2xl border border-gray-200 bg-white px-4 py-2 text-gray-600 shadow-sm transition-colors hover:bg-gray-50 dark:border-base-200 dark:bg-base-100 dark:text-gray-300 dark:hover:bg-base-200"
                     >
                         <Globe className="w-4 h-4" />
-                        <span className="text-sm font-medium uppercase">{i18n.language.split('-')[0]}</span>
+                        <span className="text-sm font-semibold uppercase">{i18n.language.split('-')[0]}</span>
                     </button>
 
                     {showLangMenu && (
-                        <div className="absolute right-0 mt-2 w-40 bg-white dark:bg-base-100 rounded-2xl shadow-xl border border-slate-100 dark:border-white/5 py-2 z-50 animate-in fade-in zoom-in duration-200">
+                        <div className="absolute right-0 mt-2 w-40 rounded-2xl border border-gray-200 bg-white py-2 shadow-xl z-50 animate-in fade-in zoom-in duration-200 dark:border-base-200 dark:bg-base-100">
                             {languages.map((lang) => (
                                 <button
                                     key={lang.code}
                                     onClick={() => changeLanguage(lang.code)}
-                                    className={`w-full text-left px-4 py-2 text-sm hover:bg-slate-50 dark:hover:bg-white/5 transition-colors ${i18n.language === lang.code ? 'text-blue-500 font-bold' : 'text-slate-600 dark:text-slate-300'
+                                    className={`w-full text-left px-4 py-2 text-sm transition-colors hover:bg-gray-50 dark:hover:bg-base-200 ${i18n.language === lang.code ? 'text-gray-950 dark:text-white font-bold' : 'text-gray-600 dark:text-gray-300'
                                         }`}
                                 >
                                     {lang.name}
@@ -147,21 +148,19 @@ export const AdminAuthGuard: React.FC<{ children: React.ReactNode }> = ({ childr
                 </div>
             </div>
 
-            <div className="max-w-md w-full bg-white dark:bg-base-100 rounded-3xl shadow-xl overflow-hidden border border-slate-100 dark:border-white/5">
-                <div className="p-8">
-                    <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/20 rounded-2xl flex items-center justify-center mb-6 mx-auto">
-                        <Lock className="w-8 h-8 text-blue-500" />
+            <div className="w-full max-w-md overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-[0_24px_70px_-45px_rgba(15,23,42,0.65)] dark:border-base-200 dark:bg-base-100">
+                <div className="p-7 sm:p-8">
+                    <img src={logoLight} alt="GravityLite" className="mx-auto -mb-6 h-52 w-52 object-contain" />
+                    <div className="mb-6 text-center">
+                        <p className="mx-auto max-w-sm text-sm leading-5 text-gray-500 dark:text-gray-400">{t('login.desc')}</p>
                     </div>
-                    <h2 className="text-2xl font-bold text-center text-slate-900 dark:text-slate-100 mb-2 font-display">{t('login.title')}</h2>
-                    <p className="text-center text-slate-500 dark:text-slate-400 mb-8 text-sm">{t('login.desc')}</p>
 
-                    <form onSubmit={handleLogin} className="space-y-6">
-                        <div className="relative">
-                            <Key className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                    <form onSubmit={handleLogin} className="space-y-4">
+                        <div>
                             <input
                                 type="password"
                                 placeholder={t('login.placeholder')}
-                                className={`w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-base-200 border-2 rounded-2xl focus:ring-2 focus:ring-blue-500 transition-all outline-none text-slate-900 dark:text-white ${error ? 'border-red-400' : 'border-transparent'}`}
+                                className={`h-12 w-full rounded-xl border bg-white px-4 text-sm font-medium text-gray-950 outline-none transition-colors placeholder:text-gray-400 dark:bg-base-200 dark:text-white ${error ? 'border-rose-300 focus:border-rose-400' : 'border-gray-200 focus:border-gray-500 dark:border-base-300'}`}
                                 value={apiKey}
                                 onChange={(e) => { setApiKey(e.target.value); setError(''); }}
                                 autoFocus
@@ -169,7 +168,7 @@ export const AdminAuthGuard: React.FC<{ children: React.ReactNode }> = ({ childr
                             />
                         </div>
                         {error && (
-                            <div className="flex items-center gap-2 text-red-500 text-sm">
+                            <div className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-600 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-300">
                                 <AlertCircle className="w-4 h-4" />
                                 <span>{error}</span>
                             </div>
@@ -177,7 +176,7 @@ export const AdminAuthGuard: React.FC<{ children: React.ReactNode }> = ({ childr
                         <button
                             type="submit"
                             disabled={isLoading || !apiKey.trim()}
-                            className="w-full py-4 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 disabled:cursor-not-allowed text-white font-bold rounded-2xl shadow-lg shadow-blue-500/30 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                            className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-gray-950 text-sm font-bold text-white transition-colors hover:bg-gray-800 disabled:cursor-not-allowed disabled:bg-gray-300 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-white dark:disabled:bg-base-200 dark:disabled:text-gray-500"
                         >
                             {isLoading ? (
                                 <>
@@ -190,14 +189,12 @@ export const AdminAuthGuard: React.FC<{ children: React.ReactNode }> = ({ childr
                         </button>
                     </form>
 
-                    <div className="mt-8 pt-6 border-t border-slate-50 dark:border-white/5 text-center">
-                        <p className="text-[10px] text-slate-400 leading-relaxed">
-                            {t('login.note')}
-                            <br />
-                            {t('login.lookup_hint')}
-                            <br />
-                            {t('login.config_hint')}
-                        </p>
+                    <div className="mt-6 border-t border-gray-100 pt-4 text-center dark:border-base-200">
+                        <div className="mx-auto max-w-full text-center text-[8px] leading-4 text-gray-400/80">
+                            <p className="whitespace-nowrap">{t('login.note')}</p>
+                            <p className="whitespace-nowrap">{t('login.lookup_hint')}</p>
+                            <p>{t('login.config_hint')}</p>
+                        </div>
                     </div>
                 </div>
             </div>

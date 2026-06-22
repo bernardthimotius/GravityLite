@@ -140,12 +140,20 @@ export default function DeviceFingerprintDialog({ account, onClose }: DeviceFing
 
     const renderProfile = (profile?: DeviceProfile) => {
         if (!profile) return <span className="text-xs text-gray-400">{t('common.empty') || '空'}</span>;
+        const rows = [
+            ['machineId', profile.machine_id],
+            ['macMachineId', profile.mac_machine_id],
+            ['devDeviceId', profile.dev_device_id],
+            ['sqmId', profile.sqm_id],
+        ];
         return (
-            <div className="grid grid-cols-1 gap-2 text-xs font-mono text-gray-600 dark:text-gray-300">
-                <div><span className="font-semibold">machineId:</span> {profile.machine_id}</div>
-                <div><span className="font-semibold">macMachineId:</span> {profile.mac_machine_id}</div>
-                <div><span className="font-semibold">devDeviceId:</span> {profile.dev_device_id}</div>
-                <div><span className="font-semibold">sqmId:</span> {profile.sqm_id}</div>
+            <div className="space-y-2 rounded-lg border border-gray-100 dark:border-base-300 bg-gray-50/60 dark:bg-base-200/50 p-3">
+                {rows.map(([label, value]) => (
+                    <div key={label} className="grid grid-cols-[96px_1fr] gap-3 text-[11px]">
+                        <span className="font-semibold text-gray-500 dark:text-gray-400">{label}</span>
+                        <span className="font-mono text-gray-700 dark:text-gray-300 break-all">{value}</span>
+                    </div>
+                ))}
             </div>
         );
     };
@@ -155,11 +163,11 @@ export default function DeviceFingerprintDialog({ account, onClose }: DeviceFing
     return createPortal(
         <div className="modal modal-open z-[120]">
             <div data-tauri-drag-region className="fixed top-0 left-0 right-0 h-8 z-[130]" />
-            <div className="modal-box relative max-w-3xl bg-white dark:bg-base-100 shadow-2xl rounded-2xl p-0 overflow-hidden">
-                <div className="px-6 py-5 border-b border-gray-100 dark:border-base-200 bg-gray-50/50 dark:bg-base-200/50 flex justify-between items-center">
-                    <div className="flex items-center gap-3">
-                        <h3 className="font-bold text-lg text-gray-900 dark:text-base-content">{t('accounts.device_fingerprint_dialog.title')}</h3>
-                        <div className="px-2.5 py-0.5 rounded-full bg-gray-100 dark:bg-base-200 border border-gray-200 dark:border-base-300 text-xs font-mono text-gray-500 dark:text-gray-400">
+            <div className="modal-box relative max-w-3xl bg-white dark:bg-base-100 shadow-2xl rounded-2xl p-0 overflow-hidden border border-gray-200 dark:border-base-200">
+                <div className="px-6 py-5 border-b border-gray-100 dark:border-base-200 bg-white dark:bg-base-100 flex justify-between items-center">
+                    <div className="flex flex-wrap items-center gap-3 min-w-0">
+                        <h3 className="font-semibold text-lg text-gray-950 dark:text-base-content">{t('accounts.device_fingerprint_dialog.title')}</h3>
+                        <div className="px-2.5 py-0.5 rounded-full bg-gray-50 dark:bg-base-200 border border-gray-200 dark:border-base-300 text-xs font-mono text-gray-500 dark:text-gray-400 truncate max-w-[260px]">
                             {account.email}
                         </div>
                     </div>
@@ -171,37 +179,40 @@ export default function DeviceFingerprintDialog({ account, onClose }: DeviceFing
                     </button>
                 </div>
 
-                <div className="p-6 space-y-3 max-h-[70vh] overflow-y-auto">
-                    <div className="flex items-center justify-between mb-2">
-                        <div className="text-sm font-semibold text-gray-800 dark:text-gray-200">{t('accounts.device_fingerprint_dialog.operations')}</div>
-                        <div className="flex gap-2 flex-wrap">
-                            <button className="btn btn-xs btn-outline" disabled={loadingDevice || actionLoading === 'preview'} onClick={handleGeneratePreview}>
-                                <Wand2 size={14} className="mr-1" />{t('accounts.device_fingerprint_dialog.generate_and_bind')}
+                <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto bg-gray-50/30 dark:bg-base-200/20">
+                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                        <div>
+                            <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">{t('accounts.device_fingerprint_dialog.operations')}</div>
+                            <p className="mt-0.5 text-[11px] text-gray-500 dark:text-gray-400">Manage generated fingerprints and account-level bindings.</p>
+                        </div>
+                        <div className="flex flex-wrap justify-end gap-2">
+                            <button className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 text-xs font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-base-300 dark:bg-base-100 dark:text-gray-300 dark:hover:bg-base-200" disabled={loadingDevice || actionLoading === 'preview'} onClick={handleGeneratePreview}>
+                                <Wand2 size={13} className="text-gray-400" />{t('accounts.device_fingerprint_dialog.generate_and_bind')}
                             </button>
-                            <button className="btn btn-xs btn-outline btn-error" disabled={loadingDevice || actionLoading === 'restore'} onClick={handleRestoreOriginalConfirm}>
-                                <RotateCcw size={14} className="mr-1" />{t('accounts.device_fingerprint_dialog.restore_original')}
+                            <button className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 text-xs font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-base-300 dark:bg-base-100 dark:text-gray-300 dark:hover:bg-base-200" disabled={loadingDevice || actionLoading === 'restore'} onClick={handleRestoreOriginalConfirm}>
+                                <RotateCcw size={13} className="text-gray-400" />{t('accounts.device_fingerprint_dialog.restore_original')}
                             </button>
                             {isTauri() && (
-                                <button className="btn btn-xs btn-outline" disabled={actionLoading === 'open-folder'} onClick={handleOpenFolder}>
-                                    <FolderOpen size={14} className="mr-1" />{t('accounts.device_fingerprint_dialog.open_storage_directory')}
+                                <button className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 text-xs font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-base-300 dark:bg-base-100 dark:text-gray-300 dark:hover:bg-base-200" disabled={actionLoading === 'open-folder'} onClick={handleOpenFolder}>
+                                    <FolderOpen size={13} className="text-gray-400" />{t('accounts.device_fingerprint_dialog.open_storage_directory')}
                                 </button>
                             )}
                         </div>
                     </div>
-                    {actionMessage && <div className="text-xs text-blue-600 dark:text-blue-300">{actionMessage}</div>}
+                    {actionMessage && <div className="rounded-lg border border-gray-200 dark:border-base-300 bg-white dark:bg-base-100 px-3 py-2 text-xs text-gray-600 dark:text-gray-300">{actionMessage}</div>}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="p-4 rounded-xl border border-gray-100 dark:border-base-200 bg-white dark:bg-base-100 shadow-sm">
+                        <div className="p-4 rounded-xl border border-gray-200 dark:border-base-200 bg-white dark:bg-base-100">
                             <div className="flex items-center justify-between mb-1">
-                                <div className="text-xs font-semibold text-gray-600 dark:text-gray-300">{t('accounts.device_fingerprint_dialog.current_storage')}</div>
-                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-300 border border-blue-100 dark:border-blue-400/40">{t('accounts.device_fingerprint_dialog.effective')}</span>
+                                <div className="text-xs font-semibold text-gray-700 dark:text-gray-200">{t('accounts.device_fingerprint_dialog.current_storage')}</div>
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-50 text-gray-600 dark:bg-base-200 dark:text-gray-300 border border-gray-200 dark:border-base-300">{t('accounts.device_fingerprint_dialog.effective')}</span>
                             </div>
                             <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-2">{t('accounts.device_fingerprint_dialog.current_storage_desc')}</p>
                             {loadingDevice ? <div className="text-xs text-gray-400">{t('accounts.device_fingerprint_dialog.loading')}</div> : renderProfile(deviceProfiles?.current_storage)}
                         </div>
-                        <div className="p-4 rounded-xl border border-gray-100 dark:border-base-200 bg-white dark:bg-base-100 shadow-sm">
+                        <div className="p-4 rounded-xl border border-gray-200 dark:border-base-200 bg-white dark:bg-base-100">
                             <div className="flex items-center justify-between mb-1">
-                                <div className="text-xs font-semibold text-gray-600 dark:text-gray-300">{t('accounts.device_fingerprint_dialog.account_binding')}</div>
-                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-300 border border-amber-100 dark:border-amber-400/40">{t('accounts.device_fingerprint_dialog.pending_application')}</span>
+                                <div className="text-xs font-semibold text-gray-700 dark:text-gray-200">{t('accounts.device_fingerprint_dialog.account_binding')}</div>
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-50 text-gray-600 dark:bg-base-200 dark:text-gray-300 border border-gray-200 dark:border-base-300">{t('accounts.device_fingerprint_dialog.pending_application')}</span>
                             </div>
                             <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-2">{t('accounts.device_fingerprint_dialog.account_binding_desc')}</p>
                             {/* Bound fingerprint = the one with is_current in current history */}
@@ -212,7 +223,7 @@ export default function DeviceFingerprintDialog({ account, onClose }: DeviceFing
                             )}
                         </div>
                     </div>
-                    <div className="p-3 rounded-xl border border-gray-100 dark:border-base-200 bg-white dark:bg-base-100">
+                    <div className="p-4 rounded-xl border border-gray-200 dark:border-base-200 bg-white dark:bg-base-100">
                         <div className="text-xs font-semibold text-gray-700 dark:text-gray-200 mb-2">{t('accounts.device_fingerprint_dialog.historical_fingerprints')}</div>
                         {loadingDevice ? (
                             <div className="text-xs text-gray-400">{t('accounts.device_fingerprint_dialog.loading')}</div>

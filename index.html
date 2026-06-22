@@ -3,19 +3,17 @@
 
 <head>
   <meta charset="UTF-8" />
-  <link rel="icon" type="image/png" href="/icon.png" />
+  <link rel="icon" type="image/webp" href="/src/assets/favicon.webp" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Antigravity Tools</title>
+  <title>GravityLite</title>
   <script>
     (function () {
       try {
         const savedTheme = localStorage.getItem('app-theme-preference');
         const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
 
-        // Determine if should be dark for later use, but ALWAYS start with splash color
         const shouldBeDark = savedTheme === 'dark' || ((!savedTheme || savedTheme === 'system') && systemDark);
 
-        // Set background color IMMEDIATELY to SPLASH COLOR (seamless transition)
         document.documentElement.style.backgroundColor = '#1a1f2e';
 
         if (shouldBeDark) {
@@ -32,13 +30,9 @@
     })();
   </script>
   <style>
-    /* Critical CSS: Force splash color initially */
     html {
       background-color: #1a1f2e !important;
     }
-
-    /* These specific overrides will apply when React loads and removes the splash screen logic, 
-       but for now we want everything to look like the splash screen */
 
     body {
       margin: 0;

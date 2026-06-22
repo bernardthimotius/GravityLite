@@ -9,6 +9,7 @@ pub struct CreateTokenRequest {
     pub max_ips: i32,
     pub curfew_start: Option<String>,
     pub curfew_end: Option<String>,
+    pub curfew_timezone: Option<String>,
     pub custom_expires_at: Option<i64>, // 自定义过期时间戳 (秒)
 }
 
@@ -20,6 +21,7 @@ pub struct UpdateTokenRequest {
     pub max_ips: Option<i32>,
     pub curfew_start: Option<Option<String>>,
     pub curfew_end: Option<Option<String>>,
+    pub curfew_timezone: Option<String>,
 }
 
 // 命令实现
@@ -40,6 +42,7 @@ pub async fn create_user_token(request: CreateTokenRequest) -> Result<UserToken,
         request.max_ips,
         request.curfew_start,
         request.curfew_end,
+        request.curfew_timezone,
         request.custom_expires_at,
     )
 }
@@ -55,6 +58,7 @@ pub async fn update_user_token(id: String, request: UpdateTokenRequest) -> Resul
         request.max_ips,
         request.curfew_start,
         request.curfew_end,
+        request.curfew_timezone,
     )
 }
 

@@ -1,5 +1,6 @@
 {
     "common": {
+        "app_name": "GravityLite",
         "loading": "Loading...",
         "empty": "Empty",
         "load_more": "Load More",
@@ -358,7 +359,7 @@
             "auto_launch": "Launch at Startup",
             "auto_launch_enabled": "Enabled",
             "auto_launch_disabled": "Disabled",
-            "auto_launch_desc": "Automatically launch Antigravity Tools when system starts",
+            "auto_launch_desc": "Automatically launch GravityLite when system starts",
             "auto_check_update": "Auto Check for Updates",
             "auto_check_update_desc": "Automatically check for new versions on startup",
             "auto_check_update_enabled": "Auto check enabled",
@@ -540,7 +541,7 @@
             "telegram": "Telegram Channel",
             "github": "GitHub",
             "view_code": "View Code",
-            "copyright": "Copyright © 2025-2026 Antigravity. All rights reserved.",
+            "copyright": "Copyright © 2026 Bernard Thimotius Turnip. Portions adapted from Antigravity-Manager © lbjlaq.",
             "check_update": "Check for Updates",
             "checking_update": "Checking...",
             "latest_version": "You're up to date",
@@ -614,7 +615,7 @@
             "long_prompt_warning": "Prompt is quite long (over 2000 chars) and may consume significant context space."
         },
         "branding": {
-            "title": "Antigravity Tools",
+            "title": "GravityLite",
             "subtitle": "Professional Account Management"
         }
     },
@@ -660,9 +661,9 @@
             "allow_lan_access": "Allow LAN Access",
             "allow_lan_access_tooltip": "When enabled, the service binds to 0.0.0.0 so other devices on your LAN can access it. Keep authorization enabled and protect your API key; restart required to apply.",
             "allow_lan_access_hint_enabled": "🌐 Listening on 0.0.0.0, LAN devices can access",
-            "allow_lan_access_hint_disabled": "🔒 Listening on 127.0.0.1 only, localhost access (Privacy First)",
+            "allow_lan_access_hint_disabled": "Listening on 127.0.0.1 only, localhost access (Privacy First)",
             "allow_lan_access_warning": "⚠️ LAN devices can access when enabled. Keep your API key secure",
-            "allow_lan_access_restart_hint": "ℹ️ Service restart required to apply changes",
+            "allow_lan_access_restart_hint": "Service restart required to apply changes",
             "api_key": "API Key",
             "api_key_tooltip": "Shared secret used by clients when proxy authorization is enabled. Regenerating the key immediately invalidates the old one.",
             "btn_regenerate": "Regenerate Key",
@@ -1074,7 +1075,7 @@
             "gemini_label": "Gemini Protocol",
             "gemini_tools": "Google AI SDK, LangChain",
             "quick_integration": "Quick Integration",
-            "click_tip": "👆 Click a model to update code examples",
+            "click_tip": "Click a model to update code examples",
             "copy_base": "Copy Base"
         },
         "supported_models": {
@@ -1116,8 +1117,8 @@
         }
     },
     "monitor": {
-        "page_title": "API Monitor Dashboard",
-        "page_subtitle": "Real-time request logging and analysis",
+        "page_title": "Traffic Logs",
+        "page_subtitle": "Monitor requests flowing through the local proxy.",
         "open_monitor": "Open Monitor",
         "logging_status": {
             "active": "Recording",
@@ -1129,7 +1130,7 @@
             "err": "ERR"
         },
         "filters": {
-            "placeholder": "Filter by model, path, or status...",
+            "placeholder": "Search model, account, path, status...",
             "quick_filters": "Quick Filters:",
             "all": "All",
             "error": "Error",
@@ -1143,6 +1144,7 @@
         },
         "table": {
             "status": "Status",
+            "request": "Request",
             "method": "Method",
             "model": "Model",
             "protocol": "Protocol",
@@ -1165,7 +1167,8 @@
             "protocol": "Protocol",
             "account_used": "Account Used",
             "id": "Request ID",
-            "payload_empty": "No data"
+            "payload_empty": "No data",
+            "copy_full_log": "Copy Full Log"
         },
         "dialog": {
             "clear_title": "Clear Proxy Logs",
@@ -1217,7 +1220,7 @@
     },
     "login": {
         "title": "Secure Access Control",
-        "desc": "Running in Web mode. Please enter management password or API Key to access.",
+        "desc": "Please enter management password or API Key to access.",
         "placeholder": "Enter management password or API Key",
         "btn_login": "Verify and Enter",
         "btn_verifying": "Verifying...",
@@ -1239,14 +1242,18 @@
         "models_used": "Models Used",
         "model_trend": "Model Usage Trend",
         "account_trend": "Account Usage Trend",
+        "api_key_trend": "API Key Usage Trend",
         "usage_trend": "Token Usage Trend",
         "by_account": "By Account",
         "by_model": "By Model",
         "by_account_view": "By Account",
+        "by_api_key": "By API Key",
         "model_details": "Model Breakdown",
         "account_details": "Account Breakdown",
+        "api_key_details": "API Key Breakdown",
         "model": "Model",
         "account": "Account",
+        "api_key": "API Key",
         "requests": "Requests",
         "input": "Input",
         "output": "Output",
@@ -1389,7 +1396,7 @@
         "placeholder_username": "e.g. user1",
         "placeholder_desc": "Optional notes",
         "placeholder_max_ips": "0 = Unlimited",
-        "hint_max_ips": "0 = Unlimited",
+        "hint_max_ips": "0 = Unlimited. Limits how many different IP addresses can use this token.",
         "hint_curfew": "Leave empty to disable. Based on server time."
     }
 }

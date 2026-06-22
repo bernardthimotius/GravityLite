@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import { Account } from '../../types/account';
 import { formatDate } from '../../utils/format';
 import { useTranslation } from 'react-i18next';
-import { MODEL_CONFIG, sortModels } from '../../config/modelConfig';
+import { ACTIVE_PROXY_MODEL_IDS, MODEL_CONFIG } from '../../config/modelConfig';
 
 interface AccountDetailsDialogProps {
     account: Account | null;
@@ -21,18 +21,16 @@ export default function AccountDetailsDialog({ account, onClose }: AccountDetail
             {/* Draggable Top Region */}
             <div data-tauri-drag-region className="fixed top-0 left-0 right-0 h-8 z-[110]" />
 
-            <div className="modal-box relative max-w-3xl bg-white dark:bg-base-100 shadow-2xl rounded-2xl p-0 overflow-hidden">
+            <div className="modal-box relative max-w-3xl bg-white dark:bg-base-100 shadow-2xl rounded-2xl p-0 overflow-hidden border border-gray-200 dark:border-base-200">
                 {/* Header */}
-                <div className="px-6 py-5 border-b border-gray-100 dark:border-base-200 bg-gray-50/50 dark:bg-base-200/50 flex justify-between items-center">
-                    <div className="flex items-center gap-3">
-                        <h3 className="font-bold text-lg text-gray-900 dark:text-base-content">{t('accounts.details.title')}</h3>
-                        <div className="px-2.5 py-0.5 rounded-full bg-gray-100 dark:bg-base-200 border border-gray-200 dark:border-base-300 text-xs font-mono text-gray-500 dark:text-gray-400">
+                <div className="px-6 py-5 border-b border-gray-100 dark:border-base-200 bg-white dark:bg-base-100 flex justify-between items-center">
+                    <div className="flex flex-wrap items-center gap-3 min-w-0">
+                        <h3 className="font-semibold text-lg text-gray-950 dark:text-base-content">{t('accounts.details.title')}</h3>
+                        <div className="px-2.5 py-0.5 rounded-full bg-gray-50 dark:bg-base-200 border border-gray-200 dark:border-base-300 text-xs font-mono text-gray-500 dark:text-gray-400 truncate max-w-[260px]">
                             {account.email}
                         </div>
                         {account.quota?.subscription_tier && (
-                            <div className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${account.quota.subscription_tier === 'ultra' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' :
-                                account.quota.subscription_tier === 'pro' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : 'bg-gray-100 text-gray-600 dark:bg-base-300 dark:text-gray-400'
-                                }`}>
+                            <div className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-gray-100 text-gray-600 dark:bg-base-300 dark:text-gray-400">
                                 {account.quota.subscription_tier}
                             </div>
                         )}
@@ -66,7 +64,7 @@ export default function AccountDetailsDialog({ account, onClose }: AccountDetail
                 )}
 
                 {/* Content */}
-                <div className="p-6 max-h-[60vh] overflow-y-auto">
+                <div className="p-6 max-h-[60vh] overflow-y-auto bg-gray-50/30 dark:bg-base-200/20">
                     {/* Protected Models Section */}
                     {account.protected_models && account.protected_models.length > 0 && (
                         <div className="mb-6">
@@ -84,19 +82,19 @@ export default function AccountDetailsDialog({ account, onClose }: AccountDetail
                         </div>
                     )}
 
-                    <div className="flex gap-6 border-b border-gray-100 dark:border-base-200 mb-4">
+                    <div className="flex gap-2 border-b border-gray-200 dark:border-base-200 mb-4">
                         <button
                             onClick={() => setActiveTab('basic')}
-                            className={`pb-2 text-xs font-bold uppercase tracking-widest transition-colors border-b-2 ${activeTab === 'basic' ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}
+                            className={`px-0 pb-3 text-xs font-bold uppercase tracking-widest transition-colors border-b-2 ${activeTab === 'basic' ? 'border-gray-950 text-gray-950 dark:border-gray-100 dark:text-gray-100' : 'border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}
                         >
                             {t('accounts.details.model_quota')}
                         </button>
                         {account.quota?.quota_groups && account.quota.quota_groups.length > 0 && (
                             <button
                                 onClick={() => setActiveTab('detailed')}
-                                className={`pb-2 text-xs font-bold uppercase tracking-widest transition-colors border-b-2 flex items-center gap-1.5 ${activeTab === 'detailed' ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}
+                                className={`ml-4 px-0 pb-3 text-xs font-bold uppercase tracking-widest transition-colors border-b-2 flex items-center gap-1.5 ${activeTab === 'detailed' ? 'border-gray-950 text-gray-950 dark:border-gray-100 dark:text-gray-100' : 'border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}
                             >
-                                <Bot size={12} className={activeTab === 'detailed' ? 'text-blue-500' : ''} />
+                                <Bot size={12} />
                                 {t('accounts.details.quota_groups', 'Detailed Quota')}
                             </button>
                         )}
@@ -105,31 +103,24 @@ export default function AccountDetailsDialog({ account, onClose }: AccountDetail
                     {activeTab === 'basic' && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {(() => {
-                                const uniqueLabels = new Set<string>();
-                                return sortModels(
-                                    (account.quota?.models || []).map(model => {
-                                        const config = MODEL_CONFIG[model.name.toLowerCase()];
-                                        const label = model.display_name || (config?.i18nKey ? t(config.i18nKey) : (config?.label || model.name));
-                                        return {
-                                            id: model.name.toLowerCase(),
-                                            label: label,
-                                            model
-                                        };
+                                const models = ACTIVE_PROXY_MODEL_IDS
+                                    .map(id => {
+                                        const model = account.quota?.models.find(model => model.name.toLowerCase() === id);
+                                        const config = MODEL_CONFIG[id];
+                                        return model && config ? { id, model, label: config.label } : null;
                                     })
-                                ).filter(m => {
-                                    if (uniqueLabels.has(m.label)) return false;
-                                    uniqueLabels.add(m.label);
-                                    return true;
-                                }).map(({ model, label }) => (
-                                    <div key={model.name} className="p-4 rounded-xl border border-gray-100 dark:border-base-200 bg-white dark:bg-base-100 hover:border-blue-100 dark:hover:border-blue-900 hover:shadow-sm transition-all group">
+                                    .filter(Boolean) as Array<{ id: string; label: string; model: NonNullable<typeof account.quota>['models'][number] }>;
+
+                                return models.map(({ id, model, label }) => (
+                                    <div key={id} className="p-4 rounded-xl border border-gray-200 dark:border-base-200 bg-white dark:bg-base-100 hover:border-gray-300 dark:hover:border-base-300 transition-colors group">
                                         <div className="flex justify-between items-start mb-3">
                                             <div className="flex flex-col gap-1">
                                                 <div className="flex items-center gap-2">
                                                     {(() => {
-                                                        const Icon = MODEL_CONFIG[model.name.toLowerCase()]?.Icon || Bot;
+                                                        const Icon = MODEL_CONFIG[id]?.Icon || Bot;
                                                         return <Icon size={16} className="shrink-0" />;
                                                     })()}
-                                                    <span className="text-sm font-medium font-mono text-gray-700 dark:text-gray-300 group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors">
+                                                    <span className="text-sm font-semibold text-gray-800 dark:text-gray-200 transition-colors">
                                                         {label}
                                                     </span>
                                                 </div>
@@ -179,16 +170,16 @@ export default function AccountDetailsDialog({ account, onClose }: AccountDetail
                     {activeTab === 'detailed' && account.quota?.quota_groups && account.quota.quota_groups.length > 0 && (
                         <div className="flex flex-col gap-4">
                             {account.quota.quota_groups.map((group, idx) => (
-                                <div key={idx} className="p-4 rounded-xl border border-blue-100 dark:border-blue-900/30 bg-blue-50/30 dark:bg-blue-900/10">
-                                    <div className="font-medium text-sm text-blue-800 dark:text-blue-300 mb-3 font-mono flex justify-between items-center">
+                                <div key={idx} className="p-4 rounded-xl border border-gray-200 dark:border-base-200 bg-white dark:bg-base-100">
+                                    <div className="font-semibold text-sm text-gray-900 dark:text-gray-100 mb-3 flex justify-between items-center gap-3">
                                         <span>{group.display_name}</span>
-                                        {group.description && <span className="text-[10px] font-normal opacity-70">{group.description}</span>}
+                                        {group.description && <span className="text-[10px] font-mono text-gray-500 dark:text-gray-400 truncate">{group.description}</span>}
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                         {group.buckets.map((bucket, bIdx) => {
                                             const percentage = Math.round(bucket.remaining_fraction * 100);
                                             return (
-                                                <div key={bIdx} className="bg-white dark:bg-base-200 p-3 rounded-lg border border-gray-100 dark:border-white/5 shadow-sm">
+                                                <div key={bIdx} className="bg-gray-50/70 dark:bg-base-200 p-3 rounded-lg border border-gray-200 dark:border-base-300">
                                                     <div className="flex justify-between items-center mb-2">
                                                         <span className="text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider">{bucket.window}</span>
                                                         <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${percentage >= 50 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : percentage >= 20 ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>

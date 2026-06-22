@@ -314,7 +314,7 @@
             "auto_launch": "Başlangıçta Çalıştır",
             "auto_launch_enabled": "Etkin",
             "auto_launch_disabled": "Devre Dışı",
-            "auto_launch_desc": "Sistem başladığında Antigravity Tools'u otomatik olarak başlat"
+            "auto_launch_desc": "Sistem başladığında GravityLite'ı otomatik olarak başlat"
         },
         "account": {
             "title": "Hesap Ayarları",
@@ -547,9 +547,9 @@
             "allow_lan_access": "LAN Erişimine İzin Ver",
             "allow_lan_access_tooltip": "Etkinleştirildiğinde, hizmet 0.0.0.0'a bağlanır böylece LAN'ınızdaki diğer cihazlar erişebilir. Yetkilendirmeyi etkin tutun ve API anahtarınızı koruyun; uygulamak için yeniden başlatma gerekir.",
             "allow_lan_access_hint_enabled": "🌐 0.0.0.0 dinleniyor, LAN cihazları erişebilir",
-            "allow_lan_access_hint_disabled": "🔒 Sadece 127.0.0.1 dinleniyor, localhost erişimi (Gizlilik Öncelikli)",
+            "allow_lan_access_hint_disabled": "Sadece 127.0.0.1 dinleniyor, localhost erişimi (Gizlilik Öncelikli)",
             "allow_lan_access_warning": "⚠️ Etkinleştirildiğinde LAN cihazları erişebilir. API anahtarınızı güvende tutun",
-            "allow_lan_access_restart_hint": "ℹ️ Değişiklikleri uygulamak için hizmet yeniden başlatması gerekir",
+            "allow_lan_access_restart_hint": "Değişiklikleri uygulamak için hizmet yeniden başlatması gerekir",
             "api_key": "API Anahtarı",
             "api_key_tooltip": "Proxy yetkilendirmesi etkinleştirildiğinde istemciler tarafından kullanılan paylaşılan gizli anahtar. Anahtarı yeniden oluşturmak eskisini hemen geçersiz kılar.",
             "btn_regenerate": "Anahtarı Yeniden Oluştur",
@@ -872,7 +872,7 @@
             "gemini_label": "Gemini",
             "gemini_tools": "Google AI SDK, LangChain",
             "quick_integration": "Hızlı Entegrasyon",
-            "click_tip": "👆 Model kodunu güncellemek için modele tıklayın",
+            "click_tip": "Model kodunu güncellemek için modele tıklayın",
             "copy_base": "Base Kopyala"
         },
         "cli_sync": {

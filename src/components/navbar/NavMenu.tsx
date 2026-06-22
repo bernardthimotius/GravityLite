@@ -70,7 +70,7 @@ export function NavMenu({ navItems }: NavMenuProps) {
                         `}
                         title={item.label}
                     >
-                        <item.icon className="w-5 h-5" />
+                        {item.icon ? <item.icon className="w-5 h-5" /> : <span className="text-[10px] font-semibold px-1">{item.label.slice(0, 1)}</span>}
                     </Link>
                 ))}
             </nav>
@@ -93,7 +93,7 @@ export function NavMenu({ navItems }: NavMenuProps) {
                         `}
                         title={item.label}
                     >
-                        <item.icon className="w-5 h-5" />
+                        {item.icon ? <item.icon className="w-5 h-5" /> : <span className="text-[10px] font-semibold px-1">{item.label.slice(0, 1)}</span>}
                     </Link>
                 ))}
             </nav>
@@ -116,7 +116,7 @@ export function NavMenu({ navItems }: NavMenuProps) {
                         `}
                         title={item.label}
                     >
-                        <item.icon className="w-5 h-5" />
+                        {item.icon ? <item.icon className="w-5 h-5" /> : <span className="text-[10px] font-semibold px-1">{item.label.slice(0, 1)}</span>}
                     </Link>
                 ))}
             </nav>

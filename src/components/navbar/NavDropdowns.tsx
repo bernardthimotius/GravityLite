@@ -118,7 +118,7 @@ export function NavigationDropdown({
     const CurrentIcon = currentItem?.icon;
 
     // 如果没有当前项,不渲染
-    if (!currentItem || !CurrentIcon) return null;
+    if (!currentItem) return null;
 
     return (
         <div className="relative" ref={menuRef}>
@@ -126,7 +126,11 @@ export function NavigationDropdown({
                 onClick={() => setIsOpen(!isOpen)}
                 className="flex items-center gap-2 px-3 py-2 rounded-full bg-gray-100 dark:bg-base-200 hover:bg-gray-200 dark:hover:bg-base-100 transition-colors"
             >
-                <CurrentIcon className="w-4 h-4 text-gray-700 dark:text-gray-300" />
+                {CurrentIcon ? (
+                    <CurrentIcon className="w-4 h-4 text-gray-700 dark:text-gray-300" />
+                ) : (
+                    <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">{currentItem.label.slice(0, 1)}</span>
+                )}
                 {/* 根据 showLabel 控制文字显示 */}
                 {showLabel && (
                     <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -150,7 +154,7 @@ export function NavigationDropdown({
                                 : 'text-gray-700 dark:text-gray-300'
                                 }`}
                         >
-                            <item.icon className="w-4 h-4" />
+                            {item.icon ? <item.icon className="w-4 h-4" /> : <span className="text-xs font-semibold w-4 text-center">{item.label.slice(0, 1)}</span>}
                             <span>{item.label}</span>
                         </Link>
                     ))}
@@ -204,7 +208,7 @@ export function MoreDropdown({
             <button
                 onClick={() => setIsOpen(!isOpen)}
                 className="w-10 h-10 rounded-full bg-gray-100 dark:bg-base-200 hover:bg-gray-200 dark:hover:bg-base-100 flex items-center justify-center transition-colors"
-                title={t('nav.more', '更多')}
+                title={t('nav.more', 'More')}
             >
                 <MoreVertical className="w-5 h-5 text-gray-700 dark:text-gray-300" />
             </button>
@@ -269,7 +273,7 @@ export function MoreDropdown({
                                 className="w-full px-4 py-2.5 text-left text-sm flex items-center gap-3 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-red-600 dark:text-red-400"
                             >
                                 <LogOut className="w-4 h-4" />
-                                <span>{t('nav.logout', '登出')}</span>
+                                <span>{t('nav.logout', 'Logout')}</span>
                             </button>
                         </>
                     )}

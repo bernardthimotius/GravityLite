@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Edit2, Trash2, Power, Globe } from 'lucide-react';
+import { Edit2, Trash2, Power } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { ProxyEntry } from '../../../types/config';
 import ProxyEditModal from './ProxyEditModal';
@@ -194,8 +194,7 @@ export default function ProxyList({ proxies, onUpdate, accountBindings, accounts
                                                     </span>
                                                 ))}
                                             </div>
-                                            <div className="flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500 font-mono mt-0.5 max-w-[240px] truncate" title={proxy.url}>
-                                                <Globe size={10} />
+                                            <div className="text-xs text-gray-400 dark:text-gray-500 font-mono mt-0.5 max-w-[240px] truncate" title={proxy.url}>
                                                 {proxy.url}
                                             </div>
                                         </div>

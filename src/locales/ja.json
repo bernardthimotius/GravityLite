@@ -115,7 +115,7 @@
             "export_error": "エクスポートに失敗しました"
         },
         "branding": {
-            "title": "Antigravity Tools",
+            "title": "GravityLite",
             "subtitle": "プロフェッショナルなアカウント管理"
         }
     },
@@ -338,7 +338,7 @@
             "auto_launch": "起動時に実行",
             "auto_launch_enabled": "有効",
             "auto_launch_disabled": "無効",
-            "auto_launch_desc": "システム起動時にAntigravity Toolsを自動的に起動する",
+            "auto_launch_desc": "システム起動時にGravityLiteを自動的に起動する",
             "auto_check_update": "更新を自動確認",
             "auto_check_update_desc": "起動時に新しいバージョンを自動的に確認します",
             "auto_check_update_disabled": "自動確認は無効です",
@@ -567,7 +567,7 @@
             "title": "スマートウォームアップ"
         },
         "branding": {
-            "title": "Antigravity Tools",
+            "title": "GravityLite",
             "subtitle": "プロフェッショナルなアカウント管理"
         }
     },
@@ -613,9 +613,9 @@
             "allow_lan_access": "LANアクセスの許可",
             "allow_lan_access_tooltip": "有効にすると、サービスは 0.0.0.0 にバインドされ、LAN内の他のデバイスからアクセスできるようになります。認証を有効にし、APIキーを保護してください。適用には再起動が必要です。",
             "allow_lan_access_hint_enabled": "🌐 0.0.0.0 で待機中、LAN内のデバイスがアクセス可能",
-            "allow_lan_access_hint_disabled": "🔒 127.0.0.1 のみで待機中、localhostアクセス (プライバシー優先)",
+            "allow_lan_access_hint_disabled": "127.0.0.1 のみで待機中、localhostアクセス (プライバシー優先)",
             "allow_lan_access_warning": "⚠️ 有効にするとLAN内のデバイスがアクセス可能になります。APIキーを安全に保ってください",
-            "allow_lan_access_restart_hint": "ℹ️ 適用にはサービスの再起動が必要です",
+            "allow_lan_access_restart_hint": "適用にはサービスの再起動が必要です",
             "api_key": "APIキー",
             "api_key_tooltip": "プロキシ認証が有効な場合にクライアントが使用する共通の秘密キー。キーを再生成すると古いキーは即座に無効になります。",
             "btn_regenerate": "キーを再生成",
@@ -1021,7 +1021,7 @@
             "gemini_label": "Gemini プロトコル",
             "gemini_tools": "Google AI SDK, LangChain",
             "quick_integration": "クイック統合",
-            "click_tip": "👆 モデルをクリックしてコード例を更新",
+            "click_tip": "モデルをクリックしてコード例を更新",
             "copy_base": "ベースURLをコピー"
         },
         "supported_models": {

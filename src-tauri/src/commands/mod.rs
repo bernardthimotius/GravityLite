@@ -1045,7 +1045,9 @@ pub async fn save_http_api_settings(
 // Token Statistics Commands
 // ============================================================================
 
-pub use crate::modules::token_stats::{AccountTokenStats, TokenStatsAggregated, TokenStatsSummary};
+pub use crate::modules::token_stats::{
+    AccountTokenStats, ApiKeyTokenStats, TokenStatsAggregated, TokenStatsSummary,
+};
 
 #[tauri::command]
 pub async fn get_token_stats_hourly(hours: i64) -> Result<Vec<TokenStatsAggregated>, String> {
@@ -1065,6 +1067,11 @@ pub async fn get_token_stats_weekly(weeks: i64) -> Result<Vec<TokenStatsAggregat
 #[tauri::command]
 pub async fn get_token_stats_by_account(hours: i64) -> Result<Vec<AccountTokenStats>, String> {
     crate::modules::token_stats::get_account_stats(hours)
+}
+
+#[tauri::command]
+pub async fn get_token_stats_by_api_key(hours: i64) -> Result<Vec<ApiKeyTokenStats>, String> {
+    crate::modules::token_stats::get_api_key_stats(hours)
 }
 
 #[tauri::command]
@@ -1105,4 +1112,18 @@ pub async fn get_token_stats_account_trend_daily(
     days: i64,
 ) -> Result<Vec<crate::modules::token_stats::AccountTrendPoint>, String> {
     crate::modules::token_stats::get_account_trend_daily(days)
+}
+
+#[tauri::command]
+pub async fn get_token_stats_api_key_trend_hourly(
+    hours: i64,
+) -> Result<Vec<crate::modules::token_stats::ApiKeyTrendPoint>, String> {
+    crate::modules::token_stats::get_api_key_trend_hourly(hours)
+}
+
+#[tauri::command]
+pub async fn get_token_stats_api_key_trend_daily(
+    days: i64,
+) -> Result<Vec<crate::modules::token_stats::ApiKeyTrendPoint>, String> {
+    crate::modules::token_stats::get_api_key_trend_daily(days)
 }

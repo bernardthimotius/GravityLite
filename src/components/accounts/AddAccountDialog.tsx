@@ -460,10 +460,7 @@ function AddAccountDialog({ onAdd, showText = true }: AddAccountDialogProps) {
         <>
             <button
                 className="px-2.5 lg:px-4 py-2 bg-white dark:bg-base-100 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-base-200 transition-colors flex items-center gap-2 shadow-sm border border-gray-200/50 dark:border-base-300 relative z-[100]"
-                onClick={() => {
-                    console.log('AddAccountDialog button clicked');
-                    setIsOpen(true);
-                }}
+                onClick={() => setIsOpen(true)}
                 title={!showText ? t('accounts.add_account') : undefined}
             >
                 <Plus className="w-4 h-4" />
@@ -475,7 +472,6 @@ function AddAccountDialog({ onAdd, showText = true }: AddAccountDialogProps) {
                     className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/50 backdrop-blur-sm"
                     style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
                 >
-                    {/* Draggable Top Region */}
                     <div data-tauri-drag-region className="fixed top-0 left-0 right-0 h-8 z-[1]" />
 
                     {/* Click outside to close */}
